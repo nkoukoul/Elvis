@@ -5,6 +5,7 @@
 #include <string>
 #include <stack>
 #include <list>
+#include "models.h"
 
 class deserialize_strategy
 {
@@ -23,18 +24,22 @@ public:
 
 class json_util_context{
 public:
-  json_util_context() = default;
-  
-  void do_deserialize(std::string const & input){
-    ds->deserialize(input);
+  json_util_context(){
+    this->ds_ = new nkou_deserialize_strategy();//default for now
   }
   
-  void set_deserialize_strategy(){
-    this->ds = new nkou_deserialize_strategy();
+  void do_deserialize(std::string const & input, model * c_model){
+    auto desirialized_input = ds_->deserialize(input);
+    c_model->model_map(std::move(desirialized_input));
+  }
+  
+  void set_deserialize_strategy(deserialize_strategy * ds){
+    delete this->ds_;
+    this->ds_ = ds;
   }
 
 private:
-  deserialize_strategy * ds;
+  deserialize_strategy * ds_;
 };
 
 

@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "tcp_server.h"
-
+#include "models.h"
 
 int socket_timeout = 3000;
 
@@ -80,22 +80,43 @@ int tcp_server::handle_request(int && client_socket){
     }*/
 
   for (int i = 0; i < bytes_read; i++) input_data += inbuffer[i];
+  input_data += '\n'; //add end of line for getline
   std::cout << "received data: \n" << input_data << "\n" << "on fd= "
   	    << in << "\n";
 
   std::istringstream ss(input_data);
-  std::string request_type, url, protocol;
-  ss >> request_type >> url >> protocol;
+  std::string request_type, url, protocol, line;
   
-  std::cout << "request: " << request_type << "\n"
-	    << "url: " << url << "\n"
-	    << "protocol: " << protocol << "\n";
+  std::getline(ss, line);
+  std::istringstream first_line(line);
+  first_line >> request_type >> url >> protocol;
+  while (line.size() > 1){
+    //headers here
+    //std::cout << "line " << line << "\n";
+    std::getline(ss, line);
+  }
+
+  //  std::cout << "request: " << request_type << "\n"
+  //	    << "url: " << url << "\n"
+  //	    << "protocol: " << protocol << "\n";
   
   if (request_type == "GET"){
     output_data = "get hi there";
   }else if (request_type == "POST"){
     output_data = "post hi there";
-    juc_.do_deserialize(input_data);
+    std::string deserialize_data;
+    //json for post
+    std::getline(ss, line);
+    while (line.size() > 1){
+      deserialize_data += line;
+      std::getline(ss, line);
+    }
+    //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
+    file_model * fm = new file_model();
+    //std::cout << deserialize_data << "\n";
+    juc_.do_deserialize(deserialize_data, fm);
+    fm->repr();
+    delete fm;
   }
 
   write(out, output_data.c_str(), output_data.size());
