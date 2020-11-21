@@ -11,13 +11,9 @@
 #include "tcp_server.h"
 
 
-// function prototypes
-//int ProcessRequest(int fd, RouteManager * p_dread);
-
 int socket_timeout = 3000;
 
-
-tcp_server::tcp_server(std::string ipaddr, int port): ipaddr_(ipaddr), port_(port)
+tcp_server::tcp_server(std::string ipaddr, int port, json_util_context && juc): ipaddr_(ipaddr), port_(port), juc_(std::move(juc))
 {
   struct sockaddr_in server; 
     
@@ -50,7 +46,7 @@ void tcp_server::accept_connections(){
       std::cout << "Error while accepting connection";
       continue;
     }
-    std::thread t(handle_request, std::move(client_socket));
+    std::thread t(&tcp_server::handle_request, this, std::move(client_socket));
     client_threads_.push_back(std::move(t));
   }
 
@@ -95,53 +91,14 @@ int tcp_server::handle_request(int && client_socket){
 	    << "url: " << url << "\n"
 	    << "protocol: " << protocol << "\n";
   
-  output_data = "hi there";
+  if (request_type == "GET"){
+    output_data = "get hi there";
+  }else if (request_type == "POST"){
+    output_data = "post hi there";
+    juc_.do_deserialize(input_data);
+  }
+
   write(out, output_data.c_str(), output_data.size());
   close(client_socket);
   return 0;
 }
-
-
-/*
-int ProcessRequest(int fd, RouteManager * p_dread)
-{
-  char inbuffer[MAXBUF], *p = inbuffer;
-  // Read data from client
-  int bytes_read = read(fd, inbuffer, MAXBUF);
-  if ( bytes_read <= 0 )
-    return -1; //client closed connection
-  std::string input_data, request_type, uri;
-  for (int i = 0; i < bytes_read; i++) input_data += inbuffer[i];
-  std::cout << "received data: " << input_data << "\n" << "on fd= "
-	    << fd << "\n";
-  std::stringstream ss(input_data);
-  ss >> request_type >> uri;
-  std::cout << "request: " << request_type << " for uri "<< uri << "\n";
-  auto proute = p_dread->GetRoute(uri);
-  std::string responce;
-  if (proute)
-    {
-      if (proute->CheckRequestControllerExistence(request_type))
-	{
-	  Controller & requestController = proute->GetRequestController(request_type);
-	  if (request_type == "GET") responce = requestController.get();
-	  if (request_type == "POST") requestController.post();
-	      
-	}
-      else
-	{
-	  std::cout << "method: "<< request_type << " is not supported on uri: "<< uri <<"\n";
-	}
-    }
-  else
-    {
-      std::cout << "uri: "<< uri << " is not supported\n";
-    }
-  //const Controller * requestController = proute->getRequestController(request_type);
-    
-  write(fd,responce.c_str(),responce.size());
-  return -1;
-}
-
-
-    */
