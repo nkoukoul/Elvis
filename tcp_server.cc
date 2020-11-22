@@ -13,8 +13,11 @@
 
 int socket_timeout = 3000;
 
-tcp_server::tcp_server(std::string ipaddr, int port, std::shared_ptr<i_json_util_context> juc, std::shared_ptr<route_manager> rm): 
-  ipaddr_(ipaddr), port_(port), juc_(juc), rm_(rm)
+tcp_server::tcp_server(std::string ipaddr, int port, 
+		       std::shared_ptr<i_json_util_context> juc, 
+		       std::shared_ptr<route_manager> rm,
+		       std::shared_ptr<i_request_context> rc): 
+  ipaddr_(ipaddr), port_(port), juc_(juc), rm_(rm), rc_(rc)
 {
   struct sockaddr_in server; 
     
@@ -38,6 +41,10 @@ void tcp_server::set_json_util_context(std::shared_ptr<i_json_util_context> juc)
 
 void tcp_server::set_route_manager(std::shared_ptr<route_manager> rm){
   this->rm_ = rm;
+}
+
+void tcp_server::set_request_context(std::shared_ptr<i_request_context> rc){
+  this->rc_ = rc;
 }
   
 void tcp_server::accept_connections(){
@@ -85,41 +92,25 @@ int tcp_server::handle_request(int && client_socket){
   std::cout << "received data: \n" << input_data << "\n" << "on fd= "
   	    << in << "\n";
 
-  std::istringstream ss(input_data);
-  std::string request_type, url, protocol, line;
+  std::unordered_map<std::string, std::string>  input_request = rc_->do_parse(std::move(input_data));
   
-  std::getline(ss, line);
-  std::istringstream first_line(line);
-  first_line >> request_type >> url >> protocol;
-  while (line.size() > 1){
-    //headers here
-    //std::cout << "line " << line << "\n";
-    std::getline(ss, line);
+  if (!rm_->get_route(input_request["url"], input_request["request_type"])){
+    input_request.insert(std::make_pair("status", "400"));
   }
-
-  //  std::cout << "request: " << request_type << "\n"
-  //	    << "url: " << url << "\n"
-  //	    << "protocol: " << protocol << "\n";
   
-  if (request_type == "GET"){
-    output_data = "get hi there";
-  }else if (request_type == "POST"){
-    output_data = "post hi there";
-    std::string deserialized_data;
-    //json for post
-    std::getline(ss, line);
-    while (line.size() > 1){
-      deserialized_data += line;
-      std::getline(ss, line);
+  if (input_request["status"] != "400"){//temporary
+    output_data = "succesfull request";
+    if (input_request["request_type"] == "POST"){
+      //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
+      file_model * fm = new file_model();
+      //std::cout << deserialize_data << "\n";
+      juc_->do_deserialize(std::move(input_request["data"]), fm);
+      fm->repr();
+      delete fm;
     }
-    //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
-    file_model * fm = new file_model();
-    //std::cout << deserialize_data << "\n";
-    juc_->do_deserialize(std::move(deserialized_data), fm);
-    fm->repr();
-    delete fm;
+  }else{
+    output_data = "bad request";
   }
-
   write(out, output_data.c_str(), output_data.size());
   close(client_socket);
   return 0;

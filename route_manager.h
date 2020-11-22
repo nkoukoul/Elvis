@@ -26,8 +26,8 @@ public:
     return;
   }
 
-  bool get_route(std::string ulr, std::string request_type){
-    return true;
+  bool get_route(std::string url, std::string request_type){
+    return route_map.find(url) != route_map.end() && route_map[url].find(request_type) != route_map[url].end();
   }
 
 private:
