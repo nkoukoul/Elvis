@@ -13,7 +13,7 @@
 
 int socket_timeout = 3000;
 
-tcp_server::tcp_server(std::string ipaddr, int port, i_json_util_context * juc): ipaddr_(ipaddr), port_(port), juc_(juc)
+tcp_server::tcp_server(std::string ipaddr, int port, i_json_util_context * juc, route_manager * rm): ipaddr_(ipaddr), port_(port), juc_(juc), rm_(rm)
 {
   struct sockaddr_in server; 
     
@@ -29,6 +29,21 @@ tcp_server::tcp_server(std::string ipaddr, int port, i_json_util_context * juc):
   }
     
   listen(server_sock_, 5);
+}
+
+tcp_server::~tcp_server(){
+  delete juc_;
+  delete rm_;
+}
+
+void tcp_server::set_json_util_context(i_json_util_context * juc){
+  delete juc_;
+  this->juc_ = juc;
+}
+
+void tcp_server::set_route_manager(route_manager * rm){
+  delete rm_;
+  this->rm_ = rm;
 }
   
 void tcp_server::accept_connections(){
