@@ -1,8 +1,3 @@
-#include <iostream>
-#include <memory>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include "app_context.h"
 #include "tcp_server.h"
 #include "json_utils.h"

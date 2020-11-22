@@ -13,7 +13,7 @@
 
 int socket_timeout = 3000;
 
-tcp_server::tcp_server(std::string ipaddr, int port, json_util_context * juc): ipaddr_(ipaddr), port_(port), juc_(juc)
+tcp_server::tcp_server(std::string ipaddr, int port, i_json_util_context * juc): ipaddr_(ipaddr), port_(port), juc_(juc)
 {
   struct sockaddr_in server; 
     

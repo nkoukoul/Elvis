@@ -8,7 +8,7 @@
 
 class tcp_server{
 public:
-  tcp_server(std::string ipaddr, int port, json_util_context * juc);
+  tcp_server(std::string ipaddr, int port, i_json_util_context * juc);
   void accept_connections();
 private:
   void quit();
@@ -17,7 +17,7 @@ private:
   std::string ipaddr_;
   int port_;
   int server_sock_;
-  json_util_context * juc_;
+  i_json_util_context * juc_;
   static const int MAXBUF = 1024;
 };
 
