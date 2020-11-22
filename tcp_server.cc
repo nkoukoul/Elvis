@@ -13,7 +13,7 @@
 
 int socket_timeout = 3000;
 
-tcp_server::tcp_server(std::string ipaddr, int port, json_util_context && juc): ipaddr_(ipaddr), port_(port), juc_(std::move(juc))
+tcp_server::tcp_server(std::string ipaddr, int port, json_util_context * juc): ipaddr_(ipaddr), port_(port), juc_(juc)
 {
   struct sockaddr_in server; 
     
@@ -23,11 +23,10 @@ tcp_server::tcp_server(std::string ipaddr, int port, json_util_context && juc): 
   server.sin_addr.s_addr = inet_addr(ipaddr_.c_str());
   server.sin_port = htons(port_);
 
-  if (bind(server_sock_, (struct sockaddr *) &server, sizeof(server))<0)
-    {
-      std::cout << "bind failed\n";
-      exit(1);
-    }
+  if (bind(server_sock_, (struct sockaddr *) &server, sizeof(server))<0){
+    std::cout << "bind failed\n";
+    exit(1);
+  }
     
   listen(server_sock_, 5);
 }
@@ -39,7 +38,7 @@ void tcp_server::accept_connections(){
   client_len = sizeof client;
   
   //return accept4(server_sock_, (struct sockaddr *)&client, &client_len, SOCK_NONBLOCK | SOCK_CLOEXEC);
-  
+  std::cout << "server accepting connections on " << ipaddr_ << ":" << port_ << "\n";
   while(true){
     int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
     if (client_socket < 0){
@@ -66,18 +65,11 @@ int tcp_server::handle_request(int && client_socket){
   int out = client_socket;
   std::string input_data, output_data;
   char inbuffer[MAXBUF], *p = inbuffer;
+
   // Read data from client
   int bytes_read = read(in, inbuffer, MAXBUF);
   if ( bytes_read <= 0 )
     return -1; //client closed connection
-
-  /*int total_bytes_read = 0;
-  int bytes_read;
-  while ((bytes_read = read(in, inbuffer, MAXBUF)) > 0){
-    std::cout << "bytes read " << bytes_read << "\n";
-    total_bytes_read += bytes_read;
-    for (int i = 0; i < bytes_read; i++) input_data += inbuffer[i];
-    }*/
 
   for (int i = 0; i < bytes_read; i++) input_data += inbuffer[i];
   input_data += '\n'; //add end of line for getline
@@ -104,17 +96,17 @@ int tcp_server::handle_request(int && client_socket){
     output_data = "get hi there";
   }else if (request_type == "POST"){
     output_data = "post hi there";
-    std::string deserialize_data;
+    std::string deserialized_data;
     //json for post
     std::getline(ss, line);
     while (line.size() > 1){
-      deserialize_data += line;
+      deserialized_data += line;
       std::getline(ss, line);
     }
     //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
     file_model * fm = new file_model();
     //std::cout << deserialize_data << "\n";
-    juc_.do_deserialize(deserialize_data, fm);
+    juc_->do_deserialize(std::move(deserialized_data), fm);
     fm->repr();
     delete fm;
   }
