@@ -1,6 +1,7 @@
 #ifndef APP_CONTEXT_H
 #define APP_CONTEXT_H
 
+#include <memory>
 #include <mutex>
 #include <thread>
 #include "tcp_server.h"
@@ -17,45 +18,44 @@ public:
   void operator=(const app &) = delete;
 
   // This is the static method that controls the access to the singleton
-  static app * get_instance(tcp_server * ts = nullptr, i_json_util_context * juc = nullptr, route_manager * rm = nullptr);
+  static app * get_instance(std::unique_ptr<tcp_server> ts = nullptr, std::unique_ptr<i_json_util_context> juc = nullptr, std::unique_ptr<route_manager> rm = nullptr);
   
   void run(){
-    std::thread t;
+//std::thread t;
     if (ts_){
       ts_->set_json_util_context(juc_);
       ts_->set_route_manager(rm_);
-      t = std::thread(&tcp_server::accept_connections,ts_);
+      ts_->accept_connections();
+//t = std::thread(&tcp_server::accept_connections, ts_);
     }
-    while(true){
-      ;;
-    }
-    if (t.joinable())
-      t.join();
+    // while(true){
+    //   ;;
+    // }
+    // if (t.joinable())
+    //   t.join();
     
-    delete ts_; 
     return;
   }
 
 protected:
-  app(tcp_server * ts, i_json_util_context * juc, route_manager * rm):ts_(ts), juc_(juc), rm_(rm){}
-  
+  app(std::shared_ptr<tcp_server> ts, std::shared_ptr<i_json_util_context> juc, std::shared_ptr<route_manager> rm):ts_(ts), juc_(juc), rm_(rm){}
   ~app(){}
   
 private:
   static app * app_instance_;
   static std::mutex app_mutex_;
-  tcp_server * ts_;
-  i_json_util_context * juc_; 
-  route_manager * rm_;
+  std::shared_ptr<tcp_server> ts_;
+  std::shared_ptr<i_json_util_context> juc_; 
+  std::shared_ptr<route_manager> rm_;
 };
 
 app * app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
-app * app::get_instance(tcp_server * ts, i_json_util_context * juc, route_manager * rm){
+app * app::get_instance(std::unique_ptr<tcp_server> ts, std::unique_ptr<i_json_util_context> juc, std::unique_ptr<route_manager> rm){
   std::lock_guard<std::mutex> lock(app_mutex_);
   if (app_instance_ == nullptr) {
-    app_instance_ = new app(ts, juc, rm);
+    app_instance_ = new app(std::move(ts), std::move(juc), std::move(rm));
   }
   return app_instance_;
 }
