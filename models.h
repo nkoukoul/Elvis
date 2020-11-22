@@ -31,7 +31,7 @@ public:
   file_model();
   file_model(attribute<std::string> filename, attribute<std::string> md5sum):filename_(filename), md5sum_(md5sum){};
   void model_map(std::list<std::unordered_map<std::string, std::string>> && deserialized_object) override;
-  void repr();
+  void repr() override;
 private:
   attribute<std::string> filename_;
   attribute<std::string> md5sum_;

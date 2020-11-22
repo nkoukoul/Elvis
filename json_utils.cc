@@ -1,7 +1,7 @@
 #include "json_utils.h"
 #include <iostream>
 
-std::list<std::unordered_map<std::string, std::string>> nkou_deserialize_strategy::deserialize(std::string const & input)
+std::list<std::unordered_map<std::string, std::string>> nkou_deserialize_strategy::deserialize(std::string && input) const
 {
   std::stack<int> mstack;
   std::list<std::unordered_map<std::string, std::string>> listOfObjects;

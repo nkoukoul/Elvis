@@ -11,14 +11,14 @@ class deserialize_strategy
 {
 public:
   deserialize_strategy() = default;
-  virtual std::list<std::unordered_map<std::string, std::string>> deserialize(std::string const & input) = 0;
+  virtual std::list<std::unordered_map<std::string, std::string>> deserialize(std::string && input) const = 0;
 };
 
 
 class nkou_deserialize_strategy : public deserialize_strategy
 {
 public:
-  std::list<std::unordered_map<std::string, std::string>> deserialize(std::string const & input) override;
+  std::list<std::unordered_map<std::string, std::string>> deserialize(std::string && input) const override;
 };
 
 
@@ -28,8 +28,8 @@ public:
     this->ds_ = new nkou_deserialize_strategy();//default for now
   }
   
-  void do_deserialize(std::string const & input, model * c_model){
-    auto desirialized_input = ds_->deserialize(input);
+  void do_deserialize(std::string && input, model * c_model){
+    auto desirialized_input = ds_->deserialize(std::move(input));
     c_model->model_map(std::move(desirialized_input));
   }
   
