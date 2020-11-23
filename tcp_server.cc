@@ -103,8 +103,8 @@ int tcp_server::handle_request(int && client_socket){
     if (input_request["request_type"] == "POST"){
       //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
       file_model * fm = new file_model();
-      //std::cout << deserialize_data << "\n";
-      juc_->do_deserialize(std::move(input_request["data"]), fm);
+      //std::cout << deserialize_data << "\n";      
+      fm->model_map(std::move(juc_->do_deserialize(std::move(input_request["data"]))));
       fm->repr();
       delete fm;
     }

@@ -28,8 +28,8 @@ public:
     rq_ = std::move(rq);
   }
   
-  virtual std::unordered_map<std::string, std::string>  do_parse(std::string && input_data){
-    return {};
+  std::unordered_map<std::string, std::string>  do_parse(std::string && input_data){
+    return rq_->parse(std::move(input_data));
   }
 
 protected:
@@ -40,10 +40,6 @@ class http_context: public i_request_context{
 public:
   http_context(){
     this->rq_ = std::make_unique<nkou_request_parser>(); //default for now
-  }
-
-  std::unordered_map<std::string, std::string> do_parse(std::string && input_data){
-    return rq_->parse(std::move(input_data));
   }
 };
 

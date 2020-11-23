@@ -5,6 +5,7 @@
 #include <string>
 #include <stack>
 #include <list>
+#include <memory>
 #include "models.h"
 
 class deserialize_strategy
@@ -24,29 +25,23 @@ class i_json_util_context{
 public:
   i_json_util_context() = default;
   
-  virtual void do_deserialize(std::string && input, model * c_model) const {}
+  std::list<std::unordered_map<std::string, std::string>> do_deserialize(std::string && input) const {
+    return ds_->deserialize(std::move(input));
+  }
   
-  virtual void set_deserialize_strategy(deserialize_strategy * ds){}
+  void set_deserialize_strategy(std::unique_ptr<deserialize_strategy> ds){
+    this->ds_ = std::move(ds);
+  }
 
 protected:
-  deserialize_strategy * ds_;
+  std::unique_ptr<deserialize_strategy> ds_;
 };
 
 class json_util_context : public i_json_util_context{
 public:
   json_util_context(){
-    this->ds_ = new nkou_deserialize_strategy();//default for now
-  }
-  
-  void do_deserialize(std::string && input, model * c_model) const override{
-    auto desirialized_input = ds_->deserialize(std::move(input));
-    c_model->model_map(std::move(desirialized_input));
-  }
-  
-  void set_deserialize_strategy(deserialize_strategy * ds) override{
-    delete this->ds_;
-    this->ds_ = ds;
-  }
+    this->ds_ = std::make_unique<nkou_deserialize_strategy>();//default for now
+  }  
 };
 
 
