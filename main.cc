@@ -1,3 +1,12 @@
+//
+// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+//
+// Distributed under the MIT License (See accompanying file LICENSE.md) 
+// 
+// repository: https://github.com/nkoukoul/Elvis
+//
+
+
 #include <memory>
 #include <thread>
 #include <string>
@@ -22,6 +31,7 @@ int main()
 				   std::move(std::make_unique<json_util_context>()), 
 				   std::move(rm),
 				   std::move(std::make_unique<http_request_context>()));
+  
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 
   std::vector<std::thread> v;

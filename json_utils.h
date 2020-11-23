@@ -1,3 +1,11 @@
+//
+// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+//
+// Distributed under the MIT License (See accompanying file LICENSE.md) 
+// 
+// repository: https://github.com/nkoukoul/Elvis
+//
+
 #ifndef JSON_UTILS_H
 #define JSON_UTILS_H
 

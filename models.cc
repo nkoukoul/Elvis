@@ -1,3 +1,11 @@
+//
+// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+//
+// Distributed under the MIT License (See accompanying file LICENSE.md) 
+// 
+// repository: https://github.com/nkoukoul/Elvis
+//
+
 #include "models.h"
 
 //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
