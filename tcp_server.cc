@@ -31,7 +31,7 @@ tcp_server::tcp_server(std::string ipaddr, int port,
     exit(1);
   }
     
-  listen(server_sock_, 5);
+  listen(server_sock_, 50);
 }
 
 void tcp_server::set_json_util_context(std::shared_ptr<i_json_util_context> juc){
@@ -53,27 +53,15 @@ void tcp_server::accept_connections(){
   client_len = sizeof client;
   
   //return accept4(server_sock_, (struct sockaddr *)&client, &client_len, SOCK_NONBLOCK | SOCK_CLOEXEC);
-  std::cout << "server accepting connections on " << ipaddr_ << ":" << port_ << "\n";
   while(true){
     int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
     if (client_socket < 0){
       std::cout << "Error while accepting connection";
       continue;
     }
-    std::thread t(&tcp_server::handle_request, this, std::move(client_socket));
-    t.detach();
-    //client_threads_.push_back(std::move(t));
+    handle_request(std::move(client_socket));
+    //std::thread t(&tcp_server::handle_request, this, std::move(client_socket));
   }
-
-  quit();
-}
-
-void tcp_server::quit(){
-  for (std::thread & t : client_threads_){
-    if (t.joinable())
-      t.join();
-  }
-  return;
 }
 
 int tcp_server::handle_request(int && client_socket){

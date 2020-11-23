@@ -67,7 +67,7 @@ app * app::get_instance(std::unique_ptr<tcp_server> ts,
 			  std::unique_ptr<route_manager> rm,
 			  std::unique_ptr<i_request_context> rc){
 
-  std::lock_guard<std::mutex> lock(app_mutex_);
+  std::lock_guard<std::mutex> guard(app_mutex_);
   if (app_instance_ == nullptr) {
     app_instance_ = new app(std::move(ts), std::move(juc), std::move(rm), std::move(rc));
   }

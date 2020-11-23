@@ -23,10 +23,7 @@ public:
   void set_request_context(std::shared_ptr<i_request_context> rc);
   void accept_connections();
 private:
-  void quit();
   int handle_request(int && client_socket);
-  std::vector<std::thread> client_threads_;
-  std::vector<int> available_sockets_;
   std::string ipaddr_;
   int port_;
   int server_sock_;
