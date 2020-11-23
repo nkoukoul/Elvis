@@ -4,6 +4,7 @@
 #include "json_utils.h"
 #include "route_manager.h"
 #include "request_context.h"
+#include "response_context.h"
 
 int main()
 {
@@ -14,7 +15,7 @@ int main()
 				   std::move(std::make_unique<tcp_server>("127.0.0.1", 8589)), 
 				   std::move(std::make_unique<json_util_context>()), 
 				   std::move(rm),
-				   std::move(std::make_unique<http_context>()));
+				   std::move(std::make_unique<http_request_context>()));
   my_app->run();
   return 0;
 }

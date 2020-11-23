@@ -8,6 +8,8 @@
 #include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
+#include "models.h"
+#include "response_context.h"
 
 class tcp_server{
 public:
@@ -24,6 +26,7 @@ private:
   void quit();
   int handle_request(int && client_socket);
   std::vector<std::thread> client_threads_;
+  std::vector<int> available_sockets_;
   std::string ipaddr_;
   int port_;
   int server_sock_;

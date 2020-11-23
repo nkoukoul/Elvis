@@ -9,7 +9,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "tcp_server.h"
-#include "models.h"
 
 int socket_timeout = 3000;
 
@@ -62,7 +61,8 @@ void tcp_server::accept_connections(){
       continue;
     }
     std::thread t(&tcp_server::handle_request, this, std::move(client_socket));
-    client_threads_.push_back(std::move(t));
+    t.detach();
+    //client_threads_.push_back(std::move(t));
   }
 
   quit();
@@ -84,13 +84,15 @@ int tcp_server::handle_request(int && client_socket){
 
   // Read data from client
   int bytes_read = read(in, inbuffer, MAXBUF);
-  if ( bytes_read <= 0 )
+  if ( bytes_read <= 0 ){
+    close(client_socket);
     return -1; //client closed connection
+  }
 
   for (int i = 0; i < bytes_read; i++) input_data += inbuffer[i];
   input_data += '\n'; //add end of line for getline
-  std::cout << "received data: \n" << input_data << "\n" << "on fd= "
-  	    << in << "\n";
+  //std::cout << "received data: \n" << input_data << "\n" << "on fd= "
+  //	    << in << "\n";
 
   std::unordered_map<std::string, std::string>  input_request = rc_->do_parse(std::move(input_data));
   
@@ -99,19 +101,23 @@ int tcp_server::handle_request(int && client_socket){
   }
   
   if (input_request["status"] != "400"){//temporary
-    output_data = "succesfull request";
+    std::string bla = "bla";
+    //nkou_response_creator * nkou = new nkou_response_creator();
+    //nkour->create_response
+    output_data = (std::make_unique<nkou_response_creator>())->create_response(std::move(bla));
     if (input_request["request_type"] == "POST"){
       //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
-      file_model * fm = new file_model();
+      std::unique_ptr<file_model> fm = std::make_unique<file_model>();
       //std::cout << deserialize_data << "\n";      
       fm->model_map(std::move(juc_->do_deserialize(std::move(input_request["data"]))));
       fm->repr();
-      delete fm;
     }
   }else{
     output_data = "bad request";
   }
+
   write(out, output_data.c_str(), output_data.size());
+  //std::cout << "closing socket " << client_socket << "\n";
   close(client_socket);
   return 0;
 }

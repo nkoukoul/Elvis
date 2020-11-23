@@ -3,5 +3,6 @@ app
 server
 *.json
 *.txt
+*.html
 /triggers
 TAGS
