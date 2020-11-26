@@ -13,7 +13,6 @@
 #include <vector>
 #include <thread>
 #include <memory>
-#include <unordered_map>
 
 class app;
 
@@ -22,8 +21,8 @@ public:
   io_context() = default;
   virtual void run(app * ac) = 0;
 private:
-  virtual std::unordered_map<std::string, std::string> do_read(int client_socket, app * ac) = 0;
-  virtual void do_write(int client_socket, app * ac, std::unordered_map<std::string, std::string> && input_data) = 0;
+  virtual std::string do_read(int client_socket, app * ac) = 0;
+  virtual void do_write(int client_socket, app * ac, std::string && input_data) = 0;
 };
 
 class tcp_server: public io_context{
@@ -32,8 +31,8 @@ public:
   void run(app * ac) override;
 private:
   void accept_connections(app * ac);
-  std::unordered_map<std::string, std::string> do_read(int client_socket, app * ac);
-  void do_write(int client_socket, app * ac, std::unordered_map<std::string, std::string> && input_data);
+  std::string do_read(int client_socket, app * ac);
+  void do_write(int client_socket, app * ac, std::string && input_data);
 //int handle_request(int && client_socket, app * ac);
   std::string ipaddr_;
   int port_;
