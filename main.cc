@@ -14,7 +14,7 @@
 
 int main()
 {
-  int thread_number = 20;
+  int thread_number = 5;
   int port = 8589;
   std::string ipaddr = "127.0.0.1";
 

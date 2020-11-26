@@ -14,7 +14,7 @@
 #include <vector>
 #include <mutex>
 #include <thread>
-#include "tcp_server.h"
+#include "io_context.h"
 #include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
@@ -31,7 +31,7 @@ public:
   void operator=(const app &) = delete;
 
   // This is the static method that controls the access to the singleton
-  static app * get_instance(std::unique_ptr<tcp_server> ts = nullptr, 
+  static app * get_instance(std::unique_ptr<io_context> ioc = nullptr, 
 			    std::unique_ptr<i_json_util_context> juc = nullptr, 
 			    std::unique_ptr<route_manager> rm = nullptr,
 			    std::unique_ptr<i_request_context> req = nullptr,
@@ -39,16 +39,16 @@ public:
   
   void run(int thread_number){
 
-    if (ts_){
+    if (ioc_){
       io_context_threads_.reserve(thread_number - 1);
       for(auto i = thread_number - 1; i > 0; --i)
         io_context_threads_.emplace_back(
-					 [&ioc = (this->ts_)]
+					 [&ioc = (this->ioc_)]
 					 {
-					   ioc->accept_connections(app_instance_);
+					   ioc->run(app_instance_);
 					 });
   
-      ts_->accept_connections(app_instance_);
+      ioc_->run(app_instance_);
 
     }
 
@@ -60,19 +60,19 @@ public:
     return;
   }
 
-  std::unique_ptr<tcp_server> ts_;
+  std::unique_ptr<io_context> ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
 
 protected:
-  app(std::unique_ptr<tcp_server> ts, 
+  app(std::unique_ptr<io_context> ioc, 
       std::unique_ptr<i_json_util_context> juc, 
       std::unique_ptr<route_manager> rm,
       std::unique_ptr<i_request_context> req,
       std::unique_ptr<i_response_context> res)
-    :ts_(std::move(ts)), juc_(std::move(juc)), rm_(std::move(rm)), req_(std::move(req)), res_(std::move(res)){}
+    :ioc_(std::move(ioc)), juc_(std::move(juc)), rm_(std::move(rm)), req_(std::move(req)), res_(std::move(res)){}
   ~app(){}
   
 private:

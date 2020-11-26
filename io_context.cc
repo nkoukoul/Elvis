@@ -16,7 +16,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "tcp_server.h"
+#include "io_context.h"
 #include "app_context.h"
 #include "models.h"
 
@@ -38,7 +38,11 @@ tcp_server::tcp_server(std::string ipaddr, int port):
     exit(1);
   }
     
-  listen(server_sock_, 50);
+  listen(server_sock_, 5);
+}
+
+void tcp_server::run(app * ac){
+  accept_connections(ac);
 }
   
 void tcp_server::accept_connections(app * ac){
@@ -54,22 +58,21 @@ void tcp_server::accept_connections(app * ac){
       std::cout << "Error while accepting connection";
       continue;
     }
-    handle_request(std::move(client_socket), ac);
+    do_write(client_socket, ac, std::move(do_read(client_socket, ac)));
     //std::thread t(&tcp_server::handle_request, this, std::move(client_socket));
   }
 }
 
-int tcp_server::handle_request(int && client_socket, app * ac){
+std::unordered_map<std::string, std::string> tcp_server::do_read(int client_socket, app * ac){
   int in = client_socket;  
-  int out = client_socket;
-  std::string input_data, output_data;
+  std::string input_data;
   char inbuffer[MAXBUF], *p = inbuffer;
 
   // Read data from client
   int bytes_read = read(in, inbuffer, MAXBUF);
   if ( bytes_read <= 0 ){
     close(client_socket);
-    return -1; //client closed connection
+    return {}; //client closed connection
   }
 
   for (int i = 0; i < bytes_read; i++) input_data += inbuffer[i];
@@ -82,17 +85,23 @@ int tcp_server::handle_request(int && client_socket, app * ac){
   if (!ac->rm_->get_route(input_request["url"], input_request["request_type"])){
     input_request.insert(std::make_pair("status", "400"));
   }
-  
-  if (input_request["status"] != "400"){//temporary
+  return input_request;
+}
+
+void tcp_server::do_write(int client_socket, app * ac, std::unordered_map<std::string, std::string> && input_data){
+  if (input_data.empty()) return;
+  int out = client_socket;
+  std::string output_data;
+  if (input_data["status"] != "400"){//temporary
     std::string bla = "bla";
     //nkou_response_creator * nkou = new nkou_response_creator();
     //nkour->create_response
     output_data = ac->res_->do_create_response(std::move(bla));
-    if (input_request["request_type"] == "POST"){
+    if (input_data["request_type"] == "POST"){
       //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
       std::unique_ptr<file_model> fm = std::make_unique<file_model>();
       //std::cout << deserialize_data << "\n";      
-      fm->model_map(std::move(ac->juc_->do_deserialize(std::move(input_request["data"]))));
+      fm->model_map(std::move(ac->juc_->do_deserialize(std::move(input_data["data"]))));
       fm->repr();
     }
   }else{
@@ -102,5 +111,5 @@ int tcp_server::handle_request(int && client_socket, app * ac){
   write(out, output_data.c_str(), output_data.size());
   //std::cout << "closing socket " << client_socket << "\n";
   close(client_socket);
-  return 0;
+  return;
 }
