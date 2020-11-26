@@ -61,18 +61,18 @@ public:
   }
 
   std::unique_ptr<tcp_server> ts_;
-  std::shared_ptr<i_json_util_context> juc_; 
-  std::shared_ptr<route_manager> rm_;
-  std::shared_ptr<i_request_context> req_;
-  std::shared_ptr<i_response_context> res_;
+  std::unique_ptr<i_json_util_context> juc_; 
+  std::unique_ptr<route_manager> rm_;
+  std::unique_ptr<i_request_context> req_;
+  std::unique_ptr<i_response_context> res_;
 
 protected:
   app(std::unique_ptr<tcp_server> ts, 
-      std::shared_ptr<i_json_util_context> juc, 
-      std::shared_ptr<route_manager> rm,
-      std::shared_ptr<i_request_context> req,
-      std::shared_ptr<i_response_context> res)
-    :ts_(std::move(ts)), juc_(juc), rm_(rm), req_(req), res_(res){}
+      std::unique_ptr<i_json_util_context> juc, 
+      std::unique_ptr<route_manager> rm,
+      std::unique_ptr<i_request_context> req,
+      std::unique_ptr<i_response_context> res)
+    :ts_(std::move(ts)), juc_(std::move(juc)), rm_(std::move(rm)), req_(std::move(req)), res_(std::move(res)){}
   ~app(){}
   
 private:
