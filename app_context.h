@@ -11,12 +11,15 @@
 #define APP_CONTEXT_H
 
 #include <memory>
+#include <vector>
 #include <mutex>
 #include <thread>
 #include "tcp_server.h"
+#include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
-#include "request_context.h"
+#include "response_context.h"
+
 
 class app{
 public:
@@ -29,58 +32,53 @@ public:
 
   // This is the static method that controls the access to the singleton
   static app * get_instance(std::unique_ptr<tcp_server> ts = nullptr, 
-			      std::unique_ptr<i_json_util_context> juc = nullptr, 
-			      std::unique_ptr<route_manager> rm = nullptr,
-			      std::unique_ptr<i_request_context> rc = nullptr);
+			    std::unique_ptr<i_json_util_context> juc = nullptr, 
+			    std::unique_ptr<route_manager> rm = nullptr,
+			    std::unique_ptr<i_request_context> req = nullptr,
+			    std::unique_ptr<i_response_context> res = nullptr);
   
-  void run(){
-//std::thread t;
+  void run(int thread_number){
+
     if (ts_){
-      ts_->set_json_util_context(juc_);
-      ts_->set_route_manager(rm_);
-      ts_->set_request_context(rc_);
-      ts_->accept_connections();
-//t = std::thread(&tcp_server::accept_connections, ts_);
+      io_context_threads_.reserve(thread_number - 1);
+      for(auto i = thread_number - 1; i > 0; --i)
+        io_context_threads_.emplace_back(
+					 [&ioc = (this->ts_)]
+					 {
+					   ioc->accept_connections(app_instance_);
+					 });
+  
+      ts_->accept_connections(app_instance_);
+
     }
-    // while(true){
-    //   ;;
-    // }
-    // if (t.joinable())
-    //   t.join();
-    
+
+    // Block until all the threads exit
+    for(auto& t : io_context_threads_)
+      if (t.joinable())
+	t.join();
+
     return;
   }
 
+  std::unique_ptr<tcp_server> ts_;
+  std::shared_ptr<i_json_util_context> juc_; 
+  std::shared_ptr<route_manager> rm_;
+  std::shared_ptr<i_request_context> req_;
+  std::shared_ptr<i_response_context> res_;
+
 protected:
-  app(std::shared_ptr<tcp_server> ts, 
-	std::shared_ptr<i_json_util_context> juc, 
-	std::shared_ptr<route_manager> rm,
-	std::shared_ptr<i_request_context> rc)
-    :ts_(ts), juc_(juc), rm_(rm), rc_(rc){}
+  app(std::unique_ptr<tcp_server> ts, 
+      std::shared_ptr<i_json_util_context> juc, 
+      std::shared_ptr<route_manager> rm,
+      std::shared_ptr<i_request_context> req,
+      std::shared_ptr<i_response_context> res)
+    :ts_(std::move(ts)), juc_(juc), rm_(rm), req_(req), res_(res){}
   ~app(){}
   
 private:
   static app * app_instance_;
   static std::mutex app_mutex_;
-  std::shared_ptr<tcp_server> ts_;
-  std::shared_ptr<i_json_util_context> juc_; 
-  std::shared_ptr<route_manager> rm_;
-  std::shared_ptr<i_request_context> rc_;
+  std::vector<std::thread> io_context_threads_;
 };
-
-app * app::app_instance_{nullptr};
-std::mutex app::app_mutex_;
-
-app * app::get_instance(std::unique_ptr<tcp_server> ts, 
-			  std::unique_ptr<i_json_util_context> juc, 
-			  std::unique_ptr<route_manager> rm,
-			  std::unique_ptr<i_request_context> rc){
-
-  std::lock_guard<std::mutex> guard(app_mutex_);
-  if (app_instance_ == nullptr) {
-    app_instance_ = new app(std::move(ts), std::move(juc), std::move(rm), std::move(rc));
-  }
-  return app_instance_;
-}
 
 #endif //APP_CONTEXT_H
