@@ -10,7 +10,7 @@
 #include <sstream>
 
 
-std::unordered_map<std::string, std::string> nkou_request_parser::parse(std::string && input_data){
+std::unordered_map<std::string, std::string> http_request_parser::parse(std::string && input_data){
   std::unordered_map<std::string, std::string> input_request;
   
   std::istringstream ss(input_data);

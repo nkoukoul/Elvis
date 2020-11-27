@@ -23,26 +23,15 @@ std::string daytime_()
     return time;
 }
 
-std::string nkou_response_creator::create_response(std::string && input_data){
-
-  std::string page = "<!doctype html>"
-    "<html>"
-    "<head>"
-    "<title>This is the title of the webpage!</title>"
-    "</head>"
-    "<body>"
-    "<p>This is an example paragraph. Anything in the <strong>body</strong> tag will appear on the page, just like this <strong>p</strong> tag and its contents.</p>"
-    "</body>"
-    "</html>";
-
+std::string http_response_creator::create_response(std::string && input_data){
   std::string response;
-  response.reserve(page.size()+1024);
+  response.reserve(input_data.size()+1024);
   response += "HTTP/1.1 200 OK\r\n";
   response += "Date: " +  daytime_() + "\r\n"; 
   response += "Content-Type: text/html\r\n"; 
-  response += "Content-Length: " + std::to_string(page.size()+2) + "\r\n";
+  response += "Content-Length: " + std::to_string(input_data.size()+2) + "\r\n";
   response += "\r\n";
-  response += page;
+  response += input_data;
   response += "\r\n";
   return response;
 }

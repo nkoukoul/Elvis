@@ -10,16 +10,12 @@
 #ifndef APP_CONTEXT_H
 #define APP_CONTEXT_H
 
-#include <memory>
-#include <vector>
-#include <mutex>
-#include <thread>
+#include "common_headers.h"
 #include "io_context.h"
 #include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
 #include "response_context.h"
-
 
 class app{
 public:
@@ -31,14 +27,15 @@ public:
   void operator=(const app &) = delete;
 
   // This is the static method that controls the access to the singleton
-  static app * get_instance(std::unique_ptr<io_context> ioc = nullptr, 
-			    std::unique_ptr<i_json_util_context> juc = nullptr, 
-			    std::unique_ptr<route_manager> rm = nullptr,
-			    std::unique_ptr<i_request_context> req = nullptr,
-			    std::unique_ptr<i_response_context> res = nullptr);
+  static app * get_instance();
+
+  void configure(std::unique_ptr<io_context> ioc = nullptr, 
+		 std::unique_ptr<i_json_util_context> juc = nullptr, 
+		 std::unique_ptr<route_manager> rm = nullptr,
+		 std::unique_ptr<i_request_context> req = nullptr,
+		 std::unique_ptr<i_response_context> res = nullptr);
   
   void run(int thread_number){
-
     if (ioc_){
       io_context_threads_.reserve(thread_number - 1);
       for(auto i = thread_number - 1; i > 0; --i)
@@ -65,19 +62,13 @@ public:
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
-
+  static std::mutex app_mutex_;
 protected:
-  app(std::unique_ptr<io_context> ioc, 
-      std::unique_ptr<i_json_util_context> juc, 
-      std::unique_ptr<route_manager> rm,
-      std::unique_ptr<i_request_context> req,
-      std::unique_ptr<i_response_context> res)
-    :ioc_(std::move(ioc)), juc_(std::move(juc)), rm_(std::move(rm)), req_(std::move(req)), res_(std::move(res)){}
-  ~app(){}
+  app() = default;
+  ~app(){};
   
 private:
   static app * app_instance_;
-  static std::mutex app_mutex_;
   std::vector<std::thread> io_context_threads_;
 };
 

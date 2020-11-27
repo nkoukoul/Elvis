@@ -21,9 +21,9 @@ public:
 
 };
 
-class nkou_request_parser: public request_parser{
+class http_request_parser: public request_parser{
 public:
-  nkou_request_parser() = default;
+  http_request_parser() = default;
 
   std::unordered_map<std::string, std::string> parse(std::string && input_data) override;
 };
@@ -47,7 +47,7 @@ protected:
 class http_request_context: public i_request_context{
 public:
   http_request_context(){
-    this->request_ = std::make_unique<nkou_request_parser>(); //default for now
+    this->request_ = std::make_unique<http_request_parser>(); //default for now
   }
 };
 

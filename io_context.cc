@@ -59,7 +59,6 @@ void tcp_server::accept_connections(app * ac){
       continue;
     }
     do_write(client_socket, ac, std::move(do_read(client_socket, ac)));
-    //std::thread t(&tcp_server::handle_request, this, std::move(client_socket));
   }
 }
 
@@ -85,28 +84,18 @@ std::string tcp_server::do_read(int client_socket, app * ac){
 
 void tcp_server::do_write(int client_socket, app * ac, std::string && input_data){
   
-  std::unordered_map<std::string, std::string>  deserialized_input_data = ac->req_->do_parse(std::move(input_data));
-  
-  if (!ac->rm_->get_route(deserialized_input_data["url"], deserialized_input_data["request_type"])){
-    deserialized_input_data.insert(std::make_pair("status", "400"));
-  }
-  
   int out = client_socket;
   std::string output_data;
-  if (deserialized_input_data["status"] != "400"){//temporary
-    std::string bla = "bla";
-    output_data = ac->res_->do_create_response(std::move(bla));
-    if (deserialized_input_data["request_type"] == "POST"){
-      //model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
-      std::unique_ptr<file_model> fm = std::make_unique<file_model>();
-      //std::cout << deserialize_data << "\n";      
-      fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
-      fm->repr();
-    }
-  }else{
-    output_data = "bad request";
-  }
+  std::unordered_map<std::string, std::string>  deserialized_input_data = ac->req_->do_parse(std::move(input_data));
 
+  i_controller * ic = ac->rm_->get_controller(deserialized_input_data["url"],deserialized_input_data["request_type"]);
+  if (ic){
+    std::string controller_data = ic->run(std::move(deserialized_input_data));
+    output_data = ac->res_->do_create_response(std::move(controller_data));
+  }else{
+    output_data = "Bad request";
+  }
+  
   write(out, output_data.c_str(), output_data.size());
   //std::cout << "closing socket " << client_socket << "\n";
   close(client_socket);

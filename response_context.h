@@ -21,9 +21,9 @@ public:
 
 };
 
-class nkou_response_creator: public response_creator{
+class http_response_creator: public response_creator{
 public:
-  nkou_response_creator() = default;
+  http_response_creator() = default;
 
   std::string create_response(std::string && input_data) override;
 };
@@ -47,7 +47,7 @@ protected:
 class http_response_context: public i_response_context{
 public:
   http_response_context(){
-    this->response_ = std::make_unique<nkou_response_creator>(); //default for now
+    this->response_ = std::make_unique<http_response_creator>(); //default for now
   }
 };
 

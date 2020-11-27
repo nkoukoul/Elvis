@@ -11,25 +11,35 @@
 
 #include <iostream>
 #include <unordered_map>
-#include <unordered_set>
 #include <string>
+#include <memory>
+#include <mutex>
+#include "controllers.h"
 
 class route_manager{
 public:
   route_manager() = default;
-  
-  void set_route(std::string url, std::string request_type){
-    if (route_map.find(url) == route_map.end()){
-      std::unordered_set<std::string> request_types = {request_type};
-      route_map.insert(std::make_pair(url, request_types)); 
+
+  i_controller * get_controller(std::string url, std::string request_type){
+    if (get_route(url, request_type)){
+      std::cout << "url " << url << " request " << request_type << " succeed\n";
+      return route_map[url][request_type].get();
     }else{
-      std::unordered_set<std::string> & request_types = route_map[url];
-      if (request_types.find(request_type) == request_types.end()){
-	request_types.insert(request_type);
-      }
-      else{
-	std::cout << url<< " has already a request type " << request_type << " registered\n";
-      }
+      std::cout << "url " << url << " request " << request_type << " failed\n";
+      return {};
+    }
+  }
+  
+  void set_route(std::string url, std::string request_type, std::unique_ptr<i_controller> controller){
+    if (route_map.find(url) == route_map.end()){
+      //std::pair<std::string, std::unique_ptr<i_controller>> rt_pair = ;
+      std::unordered_map<std::string, std::unique_ptr<i_controller>> request_types;
+      request_types.insert(std::move(std::make_pair(request_type, std::move(controller))));
+      route_map.insert(std::move(std::make_pair(url, std::move(request_types)))); 
+    } else if (route_map[url].find(request_type) == route_map[url].end()){
+      route_map[url].insert(std::move(std::make_pair(request_type, std::move(controller))));
+    } else {
+      std::cout << url<< " has already a request type " << request_type << " registered\n";
     }
     return;
   }
@@ -39,7 +49,8 @@ public:
   }
 
 private:
-  std::unordered_map<std::string, std::unordered_set<std::string>> route_map;
+  std::mutex route_manager_lock_;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::unique_ptr<i_controller>>> route_map;
 };
 
 
