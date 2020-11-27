@@ -23,15 +23,17 @@ std::string daytime_()
     return time;
 }
 
-std::string http_response_creator::create_response(std::string && input_data){
+std::string http_response_creator::create_response(std::string && input_data, std::string && status){
   std::string response;
   response.reserve(input_data.size()+1024);
-  response += "HTTP/1.1 200 OK\r\n";
+  response += "HTTP/1.1 "+ status +"\r\n";
   response += "Date: " +  daytime_() + "\r\n"; 
   response += "Content-Type: text/html\r\n"; 
   response += "Content-Length: " + std::to_string(input_data.size()+2) + "\r\n";
+  response += "Connection: close\r\n";
   response += "\r\n";
   response += input_data;
   response += "\r\n";
+
   return response;
 }

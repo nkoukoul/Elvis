@@ -58,7 +58,28 @@ void tcp_server::accept_connections(app * ac){
       std::cout << "Error while accepting connection";
       continue;
     }
-    do_write(client_socket, ac, std::move(do_read(client_socket, ac)));
+    
+    std::string input_data = do_read(client_socket, ac);
+    if (input_data.empty()){
+      continue;
+    }
+    
+    std::unordered_map<std::string, std::string>  deserialized_input_data = ac->req_->do_parse(std::move(input_data));
+
+    i_controller * ic = ac->rm_->get_controller(deserialized_input_data["url"],deserialized_input_data["request_type"]);
+    
+    std::string output_data;
+    std::string controller_data;
+    std::string status;
+    if (ic){
+      status = "200 OK";
+      controller_data = ic->run(std::move(deserialized_input_data));
+    }else{
+      status = "400 Bad Request";
+      controller_data = "Url or method not supported";
+    }
+    output_data = ac->res_->do_create_response(std::move(controller_data), std::move(status));
+    do_write(client_socket, ac, std::move(output_data));
   }
 }
 
@@ -82,22 +103,11 @@ std::string tcp_server::do_read(int client_socket, app * ac){
   return input_data;
 }
 
-void tcp_server::do_write(int client_socket, app * ac, std::string && input_data){
+void tcp_server::do_write(int client_socket, app * ac, std::string && output_data){
   
   int out = client_socket;
-  std::string output_data;
-  std::unordered_map<std::string, std::string>  deserialized_input_data = ac->req_->do_parse(std::move(input_data));
-
-  i_controller * ic = ac->rm_->get_controller(deserialized_input_data["url"],deserialized_input_data["request_type"]);
-  if (ic){
-    std::string controller_data = ic->run(std::move(deserialized_input_data));
-    output_data = ac->res_->do_create_response(std::move(controller_data));
-  }else{
-    output_data = "Bad request";
-  }
   
   write(out, output_data.c_str(), output_data.size());
-  //std::cout << "closing socket " << client_socket << "\n";
   close(client_socket);
   return;
 }

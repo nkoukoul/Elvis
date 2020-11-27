@@ -21,7 +21,7 @@ public:
   io_context() = default;
   virtual void run(app * ac) = 0;
   virtual std::string do_read(int client_socket, app * ac) = 0;
-  virtual void do_write(int client_socket, app * ac, std::string && input_data) = 0;
+  virtual void do_write(int client_socket, app * ac, std::string && output_data) = 0;
 };
 
 class tcp_server: public io_context{
@@ -29,7 +29,7 @@ public:
   tcp_server(std::string ipaddr, int port);  
   void run(app * ac) override;
   std::string do_read(int client_socket, app * ac);
-  void do_write(int client_socket, app * ac, std::string && input_data);
+  void do_write(int client_socket, app * ac, std::string && output_data);
 private:
   void accept_connections(app * ac);
   std::string ipaddr_;

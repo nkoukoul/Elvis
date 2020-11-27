@@ -17,7 +17,7 @@ class response_creator{
 public:
   response_creator() = default;
 
-  virtual std::string create_response(std::string && input_data) = 0;
+  virtual std::string create_response(std::string && input_data, std::string && status) = 0;
 
 };
 
@@ -25,7 +25,7 @@ class http_response_creator: public response_creator{
 public:
   http_response_creator() = default;
 
-  std::string create_response(std::string && input_data) override;
+  std::string create_response(std::string && input_data, std::string && status) override;
 };
 
 class i_response_context{
@@ -36,8 +36,8 @@ public:
     response_ = std::move(response);
   }
   
-  std::string do_create_response(std::string && input_data){
-    return response_->create_response(std::move(input_data));
+  std::string do_create_response(std::string && input_data, std::string && status){
+    return response_->create_response(std::move(input_data), std::move(status));
   }
 
 protected:

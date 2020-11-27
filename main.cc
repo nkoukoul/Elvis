@@ -13,11 +13,16 @@
 #include "app_context.h"
 #include "controllers.h"
 
-int main()
+int main(int argc, char * argv[])
 {
-  int thread_number = 5;
-  int port = 8589;
-  std::string ipaddr = "127.0.0.1";
+  if (argc != 4){
+    std::cout << "Usage: app hostname port thread_number\n";
+    return -1;
+  }
+
+  std::string ipaddr = argv[1];
+  int port = std::stoi(argv[2]);
+  int thread_number = std::max<int>(1,std::stoi(argv[3]));
 
   std::unique_ptr<route_manager> rm = std::make_unique<route_manager>();
   rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));

@@ -1,5 +1,12 @@
-#include "controllers.h"
+//
+// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+//
+// Distributed under the MIT License (See accompanying file LICENSE.md) 
+// 
+// repository: https://github.com/nkoukoul/Elvis
+//
 
+#include "controllers.h"
 
 std::string file_get_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data){
   std::string page = "<!doctype html>"
