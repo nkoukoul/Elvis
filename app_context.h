@@ -16,6 +16,7 @@
 #include "route_manager.h"
 #include "json_utils.h"
 #include "response_context.h"
+#include "cache.h"
 
 class app{
 public:

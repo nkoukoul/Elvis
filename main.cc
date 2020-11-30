@@ -24,6 +24,7 @@ int main(int argc, char * argv[])
   int port = std::stoi(argv[2]);
   int thread_number = std::max<int>(1,std::stoi(argv[3]));
 
+  std::unique_ptr<cache<std::string, std::string>> app_cache = std::make_unique<cache<std::string, std::string>>(10);
   std::unique_ptr<route_manager> rm = std::make_unique<route_manager>();
   rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
