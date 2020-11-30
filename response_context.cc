@@ -7,6 +7,7 @@
 //
 
 #include "response_context.h"
+#include <iostream>
 
 std::string daytime_()
 {
@@ -28,12 +29,13 @@ std::string http_response_creator::create_response(std::string && input_data, st
   response.reserve(input_data.size()+1024);
   response += "HTTP/1.1 "+ status +"\r\n";
   response += "Date: " +  daytime_() + "\r\n"; 
-  response += "Content-Type: text/html\r\n"; 
-  response += "Content-Length: " + std::to_string(input_data.size()+2) + "\r\n";
+  if (!input_data.empty())
+    response += "Content-Type: text/html\r\n"; 
   response += "Connection: close\r\n";
+  if (!input_data.empty())
+    response += "Content-Length: " + std::to_string(input_data.size()+2) + "\r\n";
   response += "\r\n";
-  response += input_data;
-  response += "\r\n";
-
+  if (!input_data.empty())
+    response += input_data + "\r\n";
   return response;
 }

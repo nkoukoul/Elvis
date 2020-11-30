@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include "io_context.h"
 #include "app_context.h"
-#include "models.h"
 
 int socket_timeout = 3000;
 
@@ -66,14 +65,14 @@ void tcp_server::accept_connections(app * ac){
     
     std::unordered_map<std::string, std::string>  deserialized_input_data = ac->req_->do_parse(std::move(input_data));
 
-    i_controller * ic = ac->rm_->get_controller(deserialized_input_data["url"],deserialized_input_data["request_type"]);
+    i_controller * ic = ac->rm_->get_controller(deserialized_input_data["url"], deserialized_input_data["request_type"]);
     
     std::string output_data;
     std::string controller_data;
     std::string status;
     if (ic){
       status = "200 OK";
-      controller_data = ic->run(std::move(deserialized_input_data));
+      controller_data = ic->run(std::move(deserialized_input_data), ac);
     }else{
       status = "400 Bad Request";
       controller_data = "Url or method not supported";

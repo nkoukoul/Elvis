@@ -5,10 +5,11 @@
 // 
 // repository: https://github.com/nkoukoul/Elvis
 //
-
 #include "controllers.h"
+#include "app_context.h"
+#include "models.h"
 
-std::string file_get_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data){
+std::string file_get_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac){
   std::string page = "<!doctype html>"
     "<html>"
     "<head>"
@@ -21,7 +22,11 @@ std::string file_get_controller::run(std::unordered_map<std::string, std::string
   return page;
 }
 
-std::string file_post_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data){
-
-  return{};
+std::string file_post_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac){
+  //eg model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
+  std::unique_ptr<file_model> fm = std::make_unique<file_model>();
+  // this is json data so further deserialization is needed
+  fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
+  fm->repr();
+  return {};
 }
