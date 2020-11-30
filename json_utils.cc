@@ -96,10 +96,10 @@ std::list<std::unordered_map<std::string, std::string>> nkou_deserialize_strateg
     }
     i++;
   }
-  for(auto Obj : listOfObjects){
-    for (auto map : Obj){
-      std::cout << map.first << ": " << map.second << "\n";
-    }
-  }
+  // for(auto Obj : listOfObjects){
+  //   for (auto map : Obj){
+  //     std::cout << "json utils : "<< map.first << ": " << map.second << "\n";
+  //   }
+  // }
   return listOfObjects;
 }

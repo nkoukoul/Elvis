@@ -10,6 +10,7 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <iostream>
 #include <list>
 #include <unordered_map>
 #include <mutex>
@@ -44,7 +45,7 @@ public:
       }      
       cache_map_.insert(std::make_pair(k_v_pair.first, cache_list_.begin()));
       if (cache_list_.size() > capacity_){
-	K key_to_be_removed = cache_list_.back();
+	K key_to_be_removed = cache_list_.back().first;
 	cache_map_.erase(key_to_be_removed);
 	cache_list_.pop_back();
       }
@@ -61,9 +62,20 @@ public:
     std::lock_guard<std::mutex> guard(cache_lock_);
     K prev_begin_key = cache_list_.front().first;
     auto it = cache_map_[key];
-    std::iter_swap(it, cache_list_.begin());
-    std::swap(cache_map_[key]->second, cache_map_[prev_begin_key]->second);
+    std::pair<K,V> new_first_pair = *it;
+    cache_list_.erase(it);
+    cache_list_.push_front(new_first_pair);
+    auto prev_begin_key_it = std::next(cache_list_.begin());
+    cache_map_[prev_begin_key] = prev_begin_key_it;
+    cache_map_[key] = cache_list_.begin();
+    //std::swap(cache_map_[key]->second, cache_map_[prev_begin_key]->second);
     return cache_list_.front();
+  }
+
+  void state(){
+    for (auto it = cache_list_.begin(); it != cache_list_.end(); ++it){
+      std::cout << "key: " << it->first << " value: " << it->second << "\n";
+    }
   }
 
 private:

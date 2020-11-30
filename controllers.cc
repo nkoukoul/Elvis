@@ -28,5 +28,12 @@ std::string file_post_controller::run(std::unordered_map<std::string, std::strin
   // this is json data so further deserialization is needed
   fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
   fm->repr();
+  if (!ac->app_cache_->find(fm->get_filename())){
+    ac->app_cache_->insert(std::make_pair(fm->get_filename(), fm->get_md5sum()));
+  } else { 
+    auto test_pair = (*(ac->app_cache_))[fm->get_filename()];
+    std::cout << "key " << test_pair.first << " found with value " << test_pair.second << "\n";
+  }
+  ac->app_cache_->state();
   return {};
 }

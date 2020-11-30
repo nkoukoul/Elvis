@@ -25,3 +25,12 @@ void file_model::repr(){
   std::cout << "filename : " << filename_.get() << "\n";
   std::cout << "md5sum : " << md5sum_.get() << "\n";
 }
+
+
+std::string file_model::get_filename(){
+  return filename_.get();
+}
+
+std::string file_model::get_md5sum(){
+  return md5sum_.get();
+}
