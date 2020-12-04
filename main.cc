@@ -29,7 +29,8 @@ int main(int argc, char * argv[])
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
   app * my_app = app::get_instance();
   my_app->configure(
-		    std::move(std::make_unique<tcp_server>(ipaddr, port)), 
+		    std::move(std::make_unique<tcp_server>(ipaddr, port)),
+		    std::move(std::make_unique<websocket_server>(ipaddr, port)), 
 		    std::move(std::make_unique<json_util_context>()), 
 		    std::move(rm),
 		    std::move(std::make_unique<http_request_context>()),

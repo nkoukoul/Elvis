@@ -30,24 +30,26 @@ public:
   // This is the static method that controls the access to the singleton
   static app * get_instance();
 
-  void configure(std::unique_ptr<io_context> ioc = nullptr, 
+  void configure(std::unique_ptr<io_context> http_ioc = nullptr,
+		 std::unique_ptr<websocket_server> ws_ioc = nullptr, 
 		 std::unique_ptr<i_json_util_context> juc = nullptr, 
 		 std::unique_ptr<route_manager> rm = nullptr,
 		 std::unique_ptr<i_request_context> req = nullptr,
 		 std::unique_ptr<i_response_context> res = nullptr);
   
   void run(int thread_number){
-    if (ioc_){
+    if (http_ioc_){
       io_context_threads_.reserve(thread_number - 1);
       for(auto i = thread_number - 1; i > 0; --i)
         io_context_threads_.emplace_back(
-					 [&ioc = (this->ioc_)]
+					 [&http_ioc = (this->http_ioc_)]
 					 {
-					   ioc->run(app_instance_);
+					   http_ioc->run(app_instance_);
 					 });
-  
-      ioc_->run(app_instance_);
-
+      if (ws_ioc_)
+	ws_ioc_->run(app_instance_);
+      else
+	http_ioc_->run(app_instance_);
     }
 
     // Block until all the threads exit
@@ -58,7 +60,8 @@ public:
     return;
   }
 
-  std::unique_ptr<io_context> ioc_;
+  std::unique_ptr<io_context> http_ioc_;
+  std::unique_ptr<websocket_server> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_request_context> req_;
