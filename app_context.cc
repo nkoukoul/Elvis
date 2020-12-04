@@ -29,7 +29,7 @@ app * app::get_instance(){
   std::lock_guard<std::mutex> guard(app_mutex_);
   if (app_instance_ == nullptr) {
     app_instance_ = new app();
-    app_instance_->app_cache_ = std::make_unique<cache<std::string, std::string>>(4);
+    app_instance_->app_cache_ = std::make_unique<t_cache<std::string, std::string>>(2);
   }
   return app_instance_;
 }

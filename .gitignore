@@ -4,5 +4,7 @@ server
 *.json
 *.txt
 *.html
+*.pp
+*.te
 /triggers
 TAGS

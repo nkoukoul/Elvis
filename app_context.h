@@ -16,7 +16,7 @@
 #include "route_manager.h"
 #include "json_utils.h"
 #include "response_context.h"
-#include "cache.h"
+#include "t_cache.h"
 
 class app{
 public:
@@ -63,7 +63,7 @@ public:
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
-  std::unique_ptr<cache<std::string, std::string>> app_cache_;
+  std::unique_ptr<t_cache<std::string, std::string>> app_cache_;
   static std::mutex app_mutex_;
 protected:
   app() = default;
