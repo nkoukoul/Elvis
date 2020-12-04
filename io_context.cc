@@ -64,7 +64,15 @@ void tcp_server::accept_connections(app * ac){
     }
     
     std::unordered_map<std::string, std::string>  deserialized_input_data = ac->req_->do_parse(std::move(input_data));
-
+    for (auto elem : deserialized_input_data)
+      std::cout << "key " << elem.first << " value " << elem.second << " with size " << elem.second.size() << "\n";
+    //wsconnection
+    if (deserialized_input_data.find("Connection")!= deserialized_input_data.end() && deserialized_input_data["Connection"] == "Upgrade"
+	&& deserialized_input_data.find("Upgrade")!= deserialized_input_data.end() && deserialized_input_data["Upgrade"] == "websocket"){
+      ac->ws_ioc_->register_socket(client_socket, std::move(deserialized_input_data));
+      continue; //do not close the socket
+    }
+      
     i_controller * ic = ac->rm_->get_controller(deserialized_input_data["url"], deserialized_input_data["request_type"]);
     
     std::string output_data;
@@ -103,10 +111,42 @@ std::string tcp_server::do_read(int client_socket, app * ac){
 }
 
 void tcp_server::do_write(int client_socket, app * ac, std::string && output_data){
-  
   int out = client_socket;
-  
   write(out, output_data.c_str(), output_data.size());
   close(client_socket);
+  return;
+}
+
+websocket_server::websocket_server(std::string ipaddr, int port): 
+  ipaddr_(ipaddr), port_(port){}
+
+void websocket_server::run(app * ac){
+  handle_connections(ac);
+}
+
+void websocket_server::handle_connections(app * ac){
+  while (true){
+    if (socket_state_.empty()) 
+      std::this_thread::yield();
+    for (auto sd_pair : socket_state_){
+      std::string output_data = "hello";
+      do_write(sd_pair.first, ac, std::move(output_data));
+    }
+  }
+}
+
+void websocket_server::register_socket(int client_socket, std::unordered_map<std::string, std::string>  && deserialized_input_data){
+  std::lock_guard<std::mutex> guard(socket_state_mutex_);
+  socket_state_.insert(std::make_pair(client_socket, std::move(deserialized_input_data)));
+  return;
+}
+
+std::string websocket_server::do_read(int client_socket, app * ac){
+  return {};
+}
+
+void websocket_server::do_write(int client_socket, app * ac, std::string && output_data){
+  int out = client_socket;
+  write(out, output_data.c_str(), output_data.size());
   return;
 }
