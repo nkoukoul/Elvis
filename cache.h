@@ -28,7 +28,7 @@ public:
     return cache_list_.size();
   }
   
-  void insert(std::pair<K,V> k_v_pair){
+  void insert(std::pair<K,V> && k_v_pair){
     std::lock_guard<std::mutex> guard(cache_lock_);
     if (cache_map_.find(k_v_pair.first) == cache_map_.end()){
       K prev_begin_key;
