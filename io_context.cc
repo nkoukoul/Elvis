@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdio.h>
 #include <string.h>
+#include <csignal>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -18,6 +19,7 @@
 #include <unistd.h>
 #include "io_context.h"
 #include "app_context.h"
+
 
 int socket_timeout = 3000;
 
@@ -121,6 +123,7 @@ websocket_server::websocket_server(std::string ipaddr, int port):
   ipaddr_(ipaddr), port_(port){}
 
 void websocket_server::run(app * ac){
+  std::signal(SIGPIPE, SIG_IGN);
   handle_connections(ac);
 }
 
@@ -147,6 +150,9 @@ std::string websocket_server::do_read(int client_socket, app * ac){
 
 void websocket_server::do_write(int client_socket, app * ac, std::string && output_data){
   int out = client_socket;
-  write(out, output_data.c_str(), output_data.size());
+  if (write(out, output_data.c_str(), output_data.size()) < 0){
+    close(client_socket);
+    socket_state_.erase(client_socket);
+  }
   return;
 }

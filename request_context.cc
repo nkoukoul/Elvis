@@ -9,13 +9,13 @@
 #include "request_context.h"
 #include <sstream>
 
-
 std::unordered_map<std::string, std::string> http_request_parser::parse(std::string && input_data){
   std::unordered_map<std::string, std::string> input_request;
   
   std::istringstream ss(input_data);
   std::string request_type, url, protocol, line;
   
+  //first line
   std::getline(ss, line);
   std::istringstream first_line(line);
   first_line >> request_type >> url >> protocol;
@@ -23,10 +23,13 @@ std::unordered_map<std::string, std::string> http_request_parser::parse(std::str
   input_request.insert(std::make_pair("request_type", std::move(request_type)));
   input_request.insert(std::make_pair("url", std::move(url)));
   input_request.insert(std::make_pair("protocol", std::move(protocol)));
-
+  
+  //headers here
   while (line.size() > 1){
-    //headers here
     std::getline(ss, line);
+    std::size_t column_index = line.find_first_of(":");
+    if (column_index != std::string::npos)
+      input_request.insert(std::make_pair(line.substr(0, column_index), line.substr(column_index + 2, line.size()- 3 - column_index)));
   }
 
   if (input_request["request_type"] == "POST"){
