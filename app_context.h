@@ -44,12 +44,12 @@ public:
         io_context_threads_.emplace_back(
 					 [&http_ioc = (this->http_ioc_)]
 					 {
-					   http_ioc->run(app_instance_);
+					   http_ioc->run();
 					 });
       if (ws_ioc_)
-	ws_ioc_->run(app_instance_);
+	ws_ioc_->run();
       else
-	http_ioc_->run(app_instance_);
+	http_ioc_->run();
     }
 
     // Block until all the threads exit

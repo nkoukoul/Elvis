@@ -13,19 +13,23 @@
 #include <memory>
 #include <unordered_map>
 
+class app;
+
 class request_parser{
 public:
   request_parser() = default;
 
-  virtual std::unordered_map<std::string, std::string> parse(std::string && input_data) = 0;
-
+  virtual void parse(int client_socket, std::string && input_data) = 0;
 };
 
 class http_request_parser: public request_parser{
 public:
-  http_request_parser() = default;
+  http_request_parser(app * application_context = nullptr);
 
-  std::unordered_map<std::string, std::string> parse(std::string && input_data) override;
+  void parse(int client_socket, std::string && input_data) override;
+
+private:
+  app * application_context_;
 };
 
 class i_request_context{
@@ -36,8 +40,8 @@ public:
     request_ = std::move(request);
   }
   
-  std::unordered_map<std::string, std::string>  do_parse(std::string && input_data){
-    return request_->parse(std::move(input_data));
+  void do_parse(int client_socket, std::string && input_data){
+    return request_->parse(client_socket, std::move(input_data));
   }
 
 protected:
@@ -46,8 +50,8 @@ protected:
 
 class http_request_context: public i_request_context{
 public:
-  http_request_context(){
-    this->request_ = std::make_unique<http_request_parser>(); //default for now
+  http_request_context(app * application_context = nullptr){
+    this->request_ = std::make_unique<http_request_parser>(application_context); //default for now
   }
 };
 

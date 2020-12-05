@@ -38,7 +38,7 @@ std::string file_get_controller::run(std::unordered_map<std::string, std::string
   if (!ac->app_cache_->find(filename)){
     ac->app_cache_->insert(std::make_pair(filename, std::move(read_from_file("", filename))));
   }
-  return (*(ac->app_cache_))[filename].second;;
+  return (*(ac->app_cache_))[filename].second;
 }
 
 //route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}

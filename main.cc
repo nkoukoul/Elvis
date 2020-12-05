@@ -23,18 +23,18 @@ int main(int argc, char * argv[])
   std::string ipaddr = argv[1];
   int port = std::stoi(argv[2]);
   int thread_number = std::max<int>(1,std::stoi(argv[3]));
-
+  app * my_app = app::get_instance();
+  
   std::unique_ptr<route_manager> rm = std::make_unique<route_manager>();
   rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
-  app * my_app = app::get_instance();
   my_app->configure(
-		    std::move(std::make_unique<tcp_server>(ipaddr, port)),
+		    std::move(std::make_unique<tcp_server>(ipaddr, port, my_app)),
 		    std::move(std::make_unique<websocket_server>(ipaddr, port)), 
 		    std::move(std::make_unique<json_util_context>()), 
 		    std::move(rm),
-		    std::move(std::make_unique<http_request_context>()),
-		    std::move(std::make_unique<http_response_context>()));
+		    std::move(std::make_unique<http_request_context>(my_app)),
+		    std::move(std::make_unique<http_response_context>(my_app)));
   
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 
