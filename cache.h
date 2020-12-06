@@ -19,12 +19,12 @@ template<class K, class V>
 class cache{
 public:
   cache(int capacity):capacity_(capacity){};
-  bool empty(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
+
+  bool empty() const {
     return cache_list_.empty();
   }
-  int size(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
+
+  int size() const {
     return cache_list_.size();
   }
   
@@ -53,8 +53,7 @@ public:
     return;
   }
 
-  bool find(K key){
-    std::lock_guard<std::mutex> guard(cache_lock_);
+  bool find(K const key) const {
     return cache_map_.find(key) != cache_map_.end();
   }
   
@@ -72,7 +71,7 @@ public:
     return cache_list_.front();
   }
 
-  void state(){
+  void state() const {
     for (auto it = cache_list_.begin(); it != cache_list_.end(); ++it){
       std::cout << "key: " << it->first << " value: " << it->second << "\n";
     }
