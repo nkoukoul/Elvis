@@ -25,21 +25,26 @@ int main(int argc, char * argv[])
   int thread_number = std::max<int>(1,std::stoi(argv[3]));
   app * my_app = app::get_instance();
   
+  //Here we create a tcp server and inject it with an http request/response context
+  std::unique_ptr<tcp_server> http_server = std::make_unique<tcp_server>
+    (ipaddr, port, std::move(std::make_unique<http_request_context>(my_app)), std::move(std::make_unique<http_response_context>(my_app)), my_app);
+
+  //Here we create a handler for websocket connections and inject it with a websocket request/response context
   std::unique_ptr<websocket_server> ws = std::make_unique<websocket_server>
     (ipaddr, port, std::move(std::make_unique<websocket_request_context>(my_app)), std::move(std::make_unique<websocket_response_context>(my_app)), my_app);
   
-
+  //Route manager is used to connect endpoints with controllers
   std::unique_ptr<route_manager> rm = std::make_unique<route_manager>();
   rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
+
+  //Application context is injected with the tcp_server, the websocket handler, the utils and the route manager
   my_app->configure(
-		    std::move(std::make_unique<tcp_server>(ipaddr, port, my_app)),
+		    std::move(http_server),
 		    std::move(ws), 
 		    std::move(std::make_unique<json_util_context>()),
 		    std::move(std::make_unique<utils>()),  
-		    std::move(rm),
-		    std::move(std::make_unique<http_request_context>(my_app)),
-		    std::move(std::make_unique<http_response_context>(my_app)));
+		    std::move(rm));
   
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 

@@ -17,10 +17,10 @@ std::string utils::daytime_(){
   return time;
 }
 
-int utils::binary_to_decimal(std::string binary_num){
-  int dec_value = 0;
+unsigned int utils::binary_to_decimal(std::string binary_num){
+  unsigned int dec_value = 0;
  
-  int base = 1;
+  unsigned int base = 1;
  
   for (int i = binary_num.length() - 1; i >= 0; i--) {
     if (binary_num[i] == '1')

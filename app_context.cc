@@ -4,13 +4,11 @@ app * app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
 
-void app::configure(std::unique_ptr<io_context> http_ioc,
+void app::configure(std::unique_ptr<tcp_server> http_ioc,
 		    std::unique_ptr<websocket_server> ws_ioc, 
 		    std::unique_ptr<i_json_util_context> juc, 
 		    std::unique_ptr<utils> uc,
-		    std::unique_ptr<route_manager> rm,
-		    std::unique_ptr<i_request_context> req,
-		    std::unique_ptr<i_response_context> res){
+		    std::unique_ptr<route_manager> rm){
   
   std::lock_guard<std::mutex> guard(app_mutex_);
   if (http_ioc)
@@ -23,10 +21,6 @@ void app::configure(std::unique_ptr<io_context> http_ioc,
     uc_ = std::move(uc);
   if(rm)
     rm_ = std::move(rm);
-  if (req)
-    req_ = std::move(req);
-  if (res)
-    res_ = std::move(res);
   return;
 }
   

@@ -31,13 +31,11 @@ public:
   // This is the static method that controls the access to the singleton
   static app * get_instance();
 
-  void configure(std::unique_ptr<io_context> http_ioc = nullptr,
+  void configure(std::unique_ptr<tcp_server> http_ioc = nullptr,
 		 std::unique_ptr<websocket_server> ws_ioc = nullptr, 
 		 std::unique_ptr<i_json_util_context> juc = nullptr,
 		 std::unique_ptr<utils> uc = nullptr, 
-		 std::unique_ptr<route_manager> rm = nullptr,
-		 std::unique_ptr<i_request_context> req = nullptr,
-		 std::unique_ptr<i_response_context> res = nullptr);
+		 std::unique_ptr<route_manager> rm = nullptr);
   
   void run(int thread_number){
     if (http_ioc_){
@@ -62,13 +60,11 @@ public:
     return;
   }
 
-  std::unique_ptr<io_context> http_ioc_;
+  std::unique_ptr<tcp_server> http_ioc_;
   std::unique_ptr<websocket_server> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
-  std::unique_ptr<i_request_context> req_;
-  std::unique_ptr<i_response_context> res_;
   std::unique_ptr<t_cache<std::string, std::string>> app_cache_;
   static std::mutex app_mutex_;
 protected:

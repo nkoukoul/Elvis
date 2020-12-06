@@ -22,10 +22,10 @@ public:
 
   i_controller * get_controller(std::string url, std::string request_type){
     if (get_route(url, request_type)){
-      std::cout << "url " << url << " request " << request_type << " exists\n";
+      //std::cout << "url " << url << " request " << request_type << " exists\n";
       return route_map[url][request_type].get();
     }else{
-      std::cout << "url " << url << " request " << request_type << " does not exist will try with suburl\n";
+      //std::cout << "url " << url << " request " << request_type << " does not exist will try with suburl\n";
       std::size_t index = url.find_last_of("/");
       url = url.substr(0, index > 0 ? index : 0);
       if (get_route(url, request_type)){
@@ -33,7 +33,7 @@ public:
 	return route_map[url][request_type].get();
       }
     }
-    std::cout << "url " << url << " request " << request_type << " does not exist\n";
+    //std::cout << "url " << url << " request " << request_type << " does not exist\n";
     return {};
   }
   

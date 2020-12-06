@@ -35,8 +35,8 @@ void non_block_socket(int sd){
   }
 }
 
-tcp_server::tcp_server(std::string ipaddr, int port, app * ac): 
-  ipaddr_(ipaddr), port_(port), ac_(ac)
+tcp_server::tcp_server(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac): 
+  ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
 {
   struct sockaddr_in server; 
     
@@ -94,7 +94,7 @@ void tcp_server::do_read(int client_socket){
   }
   input_data += '\n'; //add end of line for getline
  
-  return ac_->req_->do_parse(client_socket, std::move(input_data));
+  return req_->do_parse(client_socket, std::move(input_data));
 }
 
 
@@ -130,35 +130,33 @@ void websocket_server::run(){
 
 void websocket_server::handle_connections(){
   while (true){
-    std::cout << "handling ws connections\n";
-    //if (socket_state_.empty()) 
-    //std::this_thread::yield();
+    //std::cout << "handling ws connections\n";
     int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, -1);
     //if (nevents == -1) {
     //perror("epoll_wait()");
     //return 1;
     //}
     for (int i = 0; i < nevents; i++) {
-      if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) ||
-          (!(events[i].events & EPOLLIN))) {
+      if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)) {
         // error case
         fprintf(stderr, "epoll error\n");
         close(events[i].data.fd);
         continue;
+      }else if (events[i].events & EPOLLIN){
+	do_read(events[i].data.fd);
+      }else if (events[i].events & EPOLLOUT){
+	std::string dummy_data = "bla bla";
+	res_->do_create_response(events[i].data.fd, {});
       }
-      do_read(events[i].data.fd);
     }
   }
 }
 
 void websocket_server::register_socket(int client_socket){
   std::lock_guard<std::mutex> guard(socket_state_mutex_);
-  //std::string dummy_data = "";
-  //socket_state_.insert(std::make_pair(client_socket, std::move(dummy_data)));
-  
   non_block_socket(client_socket);
   event.data.fd = client_socket;
-  event.events = EPOLLIN | EPOLLET;
+  event.events = EPOLLIN | EPOLLOUT | EPOLLET;
   if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_socket, &event) == -1) {
     //perror("epoll_ctl()");
     //return 1;
@@ -170,6 +168,7 @@ void websocket_server::do_read(int client_socket){
   int in = client_socket;
   char inbuffer[MAXBUF];
   std::string input_data;
+  std::string payload_in_bits;
   // Read data from client
   while(true){
     int bytes_read = read(in, inbuffer, MAXBUF);
@@ -187,7 +186,6 @@ void websocket_server::do_read(int client_socket){
       close(client_socket);
     }else {
       std::cout << "read " << bytes_read << " bytes \n";
-      std::string payload_in_bits;
       //for (int i = 0; i <7; i++){
       //std::cout << inbuffer[i + 9] <<"\n";
       //}
@@ -195,15 +193,16 @@ void websocket_server::do_read(int client_socket){
 	std::bitset<8> bb(inbuffer[i]);
 	payload_in_bits += bb.to_string();
       }
-      req_->do_parse(client_socket, std::move(payload_in_bits));      
     }
   }
+  req_->do_parse(client_socket, std::move(payload_in_bits));
   return;
 }
 
 void websocket_server::do_write(int client_socket, std::string && output_data, bool close_connection){
-  int out = client_socket;
+  int out = client_socket;  
   if (write(out, output_data.c_str(), output_data.size()) < 0 || close_connection){
+    std::cout << "error during write\n";
     close(client_socket);
     //socket_state_.erase(client_socket);
   }

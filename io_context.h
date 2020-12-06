@@ -32,10 +32,13 @@ public:
 
 class tcp_server: public io_context{
 public:
-  tcp_server(std::string ipaddr, int port, app * ac = nullptr);  
+  tcp_server(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac);  
   void run() override;
   void do_read(int client_socket) override;
   void do_write(int client_socket, std::string && output_data, bool close_connection) override;
+  
+  std::unique_ptr<i_request_context> req_;
+  std::unique_ptr<i_response_context> res_;
 private:
   app * ac_;
   void handle_connections();
@@ -53,12 +56,13 @@ public:
   void do_read(int client_socket) override;
   void do_write(int client_socket, std::string && output_data, bool close_connection) override;
   void register_socket(int client_socket);
+
+  std::unique_ptr<i_request_context> req_;
+  std::unique_ptr<i_response_context> res_;
 private:
   app * ac_;
   std::mutex socket_state_mutex_;
   void handle_connections();
-  std::unique_ptr<i_request_context> req_;
-  std::unique_ptr<i_response_context> res_;
   //std::unordered_map<int, std::string> socket_state_;
   int epoll_fd;
   struct epoll_event event;

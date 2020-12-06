@@ -47,21 +47,26 @@ void http_request_parser::parse(int client_socket, std::string && input_data){
     deserialized_input_data.insert(std::make_pair("data", std::move(deserialized_data)));
   }
   
-  for (auto elem : deserialized_input_data)
-    std::cout << "key " << elem.first << " value " << elem.second << " with size " << elem.second.size() << "\n";
-  std::cout << "\n";
+  //for (auto elem : deserialized_input_data)
+  //std::cout << "key " << elem.first << " value " << elem.second << " with size " << elem.second.size() << "\n";
+  //std::cout << "\n";
 
-  return application_context_->res_->do_create_response(client_socket, std::move(deserialized_input_data));
+  return application_context_->http_ioc_->res_->do_create_response(client_socket, std::move(deserialized_input_data));
 }
 
 websocket_request_parser::websocket_request_parser(app * application_context):application_context_(application_context){}
 
 void websocket_request_parser::parse(int client_socket, std::string && input_data){
   std::cout << "received " << input_data << "\n";
-  int payload_length = application_context_->uc_->binary_to_decimal(input_data.substr(9, 7));
+  unsigned int payload_length = application_context_->uc_->binary_to_decimal(input_data.substr(9, 7));
   std::string mask_key;
   std::string unmasked_payload_data;
   std::string masked_payload_data;
+  int opcode = application_context_->uc_->binary_to_decimal(input_data.substr(4, 4));
+  if (opcode == 8){ //close received
+    application_context_->ws_ioc_->res_->do_create_response(client_socket, {{"Connection", "close"}});
+  }
+  //std::cout << "opcode " << opcode << "\n";
   if (payload_length == 126){
     payload_length = application_context_->uc_->binary_to_decimal(input_data.substr(16, 16));
     mask_key = input_data.substr(32, 32);
@@ -80,7 +85,9 @@ void websocket_request_parser::parse(int client_socket, std::string && input_dat
     std::string mask_sub_key = mask_key.substr((i % 4) * 8 , 8);
     unmasked_payload_data += static_cast<char>(application_context_->uc_->binary_to_decimal(masked_sub_data) ^ application_context_->uc_->binary_to_decimal(mask_sub_key));
   }
-  std::cout << "payload_length " << payload_length << "\n mask_key " << mask_key << "\n";
-  std::cout << "masked_payload_data " << masked_payload_data << "\n";
-  std::cout << "unmasked_payload_data " << unmasked_payload_data << "\n";
+  //std::cout << "payload_length " << payload_length << "\n mask_key " << mask_key << "\n";
+  //std::cout << "masked_payload_data " << masked_payload_data << "\n";
+  //std::cout << "unmasked_payload_data " << unmasked_payload_data << "\n";
+  
+  //application_context_->ws_ioc_->res_->do_create_response(client_socket, {});
 }
