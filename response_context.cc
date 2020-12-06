@@ -8,9 +8,6 @@
 
 #include "response_context.h"
 #include "app_context.h"
-#include <iostream>
-#include <vector>
-
 
 http_response_creator::http_response_creator(app * application_context):application_context_(application_context){}
 
@@ -68,3 +65,7 @@ void http_response_creator::create_response(int client_socket, std::unordered_ma
   
   return application_context_->http_ioc_->do_write(client_socket, std::move(response), close_connection);
 }
+
+websocket_response_creator::websocket_response_creator(app * application_context):application_context_(application_context){}
+
+void websocket_response_creator::create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data){}

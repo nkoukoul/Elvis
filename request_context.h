@@ -32,6 +32,16 @@ private:
   app * application_context_;
 };
 
+class websocket_request_parser: public request_parser{
+public:
+  websocket_request_parser(app * application_context = nullptr);
+
+  void parse(int client_socket, std::string && input_data) override;
+
+private:
+  app * application_context_;
+};
+
 class i_request_context{
 public:
   i_request_context() = default;
@@ -52,6 +62,13 @@ class http_request_context: public i_request_context{
 public:
   http_request_context(app * application_context = nullptr){
     this->request_ = std::make_unique<http_request_parser>(application_context); //default for now
+  }
+};
+
+class websocket_request_context: public i_request_context{
+public:
+  websocket_request_context(app * application_context = nullptr){
+    this->request_ = std::make_unique<websocket_request_parser>(application_context); //default for now
   }
 };
 

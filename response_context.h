@@ -33,6 +33,16 @@ private:
   app * application_context_;
 };
 
+class websocket_response_creator: public response_creator{
+public:
+  websocket_response_creator(app * application_context = nullptr);
+
+  void create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) override;
+
+private:
+  app * application_context_;
+};
+
 class i_response_context{
 public:
   i_response_context() = default;
@@ -53,6 +63,13 @@ class http_response_context: public i_response_context{
 public:
   http_response_context(app * application_context = nullptr){
     this->response_ = std::make_unique<http_response_creator>(application_context); //default for now
+  }
+};
+
+class websocket_response_context: public i_response_context{
+public:
+  websocket_response_context(app * application_context = nullptr){
+    this->response_ = std::make_unique<websocket_response_creator>(application_context); //default for now
   }
 };
 

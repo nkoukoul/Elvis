@@ -9,6 +9,7 @@
 //#include <sys/time.h>
 #include <iostream>
 #include <sstream>
+#include <bitset>
 #include <stdio.h>
 #include <string.h>
 #include <csignal>
@@ -20,8 +21,19 @@
 #include "io_context.h"
 #include "app_context.h"
 
-
 int socket_timeout = 3000;
+
+void non_block_socket(int sd){
+  /* set O_NONBLOCK on fd */
+  int flags = fcntl(sd, F_GETFL, 0);
+  if (flags == -1) {
+    //perror("fcntl()");
+    return;
+  }
+  if (fcntl(sd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    //perror("fcntl()");
+  }
+}
 
 tcp_server::tcp_server(std::string ipaddr, int port, app * ac): 
   ipaddr_(ipaddr), port_(port), ac_(ac)
@@ -89,17 +101,27 @@ void tcp_server::do_read(int client_socket){
 void tcp_server::do_write(int client_socket, std::string && output_data, bool close_connection){
   int out = client_socket;
   write(out, output_data.c_str(), output_data.size());
-  
   //close socket if http
   if (close_connection){
     close(client_socket);
+  }else{
+    //websocket connection for now
+    ac_->ws_ioc_->register_socket(client_socket);
   }
   
   return;
 }
 
-websocket_server::websocket_server(std::string ipaddr, int port, app * ac): 
-  ipaddr_(ipaddr), port_(port), ac_(ac){}
+websocket_server::websocket_server(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac): 
+  ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac){
+  epoll_fd = epoll_create1(0);
+  if (epoll_fd == -1) {
+    //perror("epoll_create1()");
+    //exit;
+  }
+  memset(&event, 0, sizeof(event));
+  events = (struct epoll_event *)calloc(MAXEVENTS, sizeof(struct epoll_event));
+}
 
 void websocket_server::run(){
   std::signal(SIGPIPE, SIG_IGN);
@@ -108,30 +130,82 @@ void websocket_server::run(){
 
 void websocket_server::handle_connections(){
   while (true){
-    if (socket_state_.empty()) 
-      std::this_thread::yield();
-    for (auto sd_pair : socket_state_){
-      std::string output_data = "hello";
-      do_write(sd_pair.first, std::move(output_data), true);
+    std::cout << "handling ws connections\n";
+    //if (socket_state_.empty()) 
+    //std::this_thread::yield();
+    int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, -1);
+    //if (nevents == -1) {
+    //perror("epoll_wait()");
+    //return 1;
+    //}
+    for (int i = 0; i < nevents; i++) {
+      if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) ||
+          (!(events[i].events & EPOLLIN))) {
+        // error case
+        fprintf(stderr, "epoll error\n");
+        close(events[i].data.fd);
+        continue;
+      }
+      do_read(events[i].data.fd);
     }
   }
 }
 
-void websocket_server::register_socket(int client_socket, std::unordered_map<std::string, std::string>  && deserialized_input_data){
+void websocket_server::register_socket(int client_socket){
   std::lock_guard<std::mutex> guard(socket_state_mutex_);
-  socket_state_.insert(std::make_pair(client_socket, std::move(deserialized_input_data)));
+  //std::string dummy_data = "";
+  //socket_state_.insert(std::make_pair(client_socket, std::move(dummy_data)));
+  
+  non_block_socket(client_socket);
+  event.data.fd = client_socket;
+  event.events = EPOLLIN | EPOLLET;
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_socket, &event) == -1) {
+    //perror("epoll_ctl()");
+    //return 1;
+  }
   return;
 }
 
 void websocket_server::do_read(int client_socket){
+  int in = client_socket;
+  char inbuffer[MAXBUF];
+  std::string input_data;
+  // Read data from client
+  while(true){
+    int bytes_read = read(in, inbuffer, MAXBUF);
+    int message_length;
+    if (bytes_read == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	std::cout << "finished reading data from client\n";
+	break;
+      } else {
+	//perror("read()");
+	return;
+      }
+    } else if (bytes_read == 0){
+      std::cout << "ws client disconnected \n";
+      close(client_socket);
+    }else {
+      std::cout << "read " << bytes_read << " bytes \n";
+      std::string payload_in_bits;
+      //for (int i = 0; i <7; i++){
+      //std::cout << inbuffer[i + 9] <<"\n";
+      //}
+      for (int i = 0; i < bytes_read; i++){
+	std::bitset<8> bb(inbuffer[i]);
+	payload_in_bits += bb.to_string();
+      }
+      req_->do_parse(client_socket, std::move(payload_in_bits));      
+    }
+  }
   return;
 }
 
 void websocket_server::do_write(int client_socket, std::string && output_data, bool close_connection){
   int out = client_socket;
-  if (write(out, output_data.c_str(), output_data.size()) < 0){
+  if (write(out, output_data.c_str(), output_data.size()) < 0 || close_connection){
     close(client_socket);
-    socket_state_.erase(client_socket);
+    //socket_state_.erase(client_socket);
   }
   return;
 }
