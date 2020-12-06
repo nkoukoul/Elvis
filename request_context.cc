@@ -78,7 +78,7 @@ void websocket_request_parser::parse(int client_socket, std::string && input_dat
   for (int i = 0; i < masked_payload_data.size()/8; i++){
     std::string masked_sub_data = masked_payload_data.substr(i * 8, 8);
     std::string mask_sub_key = mask_key.substr((i % 4) * 8 , 8);
-    unmasked_payload_data += (char)(application_context_->uc_->binary_to_decimal(masked_sub_data) ^ application_context_->uc_->binary_to_decimal(mask_sub_key));
+    unmasked_payload_data += static_cast<char>(application_context_->uc_->binary_to_decimal(masked_sub_data) ^ application_context_->uc_->binary_to_decimal(mask_sub_key));
   }
   std::cout << "payload_length " << payload_length << "\n mask_key " << mask_key << "\n";
   std::cout << "masked_payload_data " << masked_payload_data << "\n";
