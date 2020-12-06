@@ -29,7 +29,7 @@ public:
       std::size_t index = url.find_last_of("/");
       url = url.substr(0, index > 0 ? index : 0);
       if (get_route(url, request_type)){
-	std::cout << "partial_url " << url << " request " << request_type << " exists\n";
+	//std::cout << "partial_url " << url << " request " << request_type << " exists\n";
 	return route_map[url][request_type].get();
       }
     }

@@ -12,7 +12,7 @@
 
 http_request_parser::http_request_parser(app * application_context):application_context_(application_context){}
 
-void http_request_parser::parse(int client_socket, std::string && input_data){
+void http_request_parser::parse(int const client_socket, std::string && input_data) const {
   
   std::unordered_map<std::string, std::string> deserialized_input_data;
   
@@ -56,8 +56,8 @@ void http_request_parser::parse(int client_socket, std::string && input_data){
 
 websocket_request_parser::websocket_request_parser(app * application_context):application_context_(application_context){}
 
-void websocket_request_parser::parse(int client_socket, std::string && input_data){
-  std::cout << "received " << input_data << "\n";
+void websocket_request_parser::parse(int const client_socket, std::string && input_data) const {
+  //std::cout << "received " << input_data << "\n";
   unsigned int payload_length = application_context_->uc_->binary_to_decimal(input_data.substr(9, 7));
   std::string mask_key;
   std::string unmasked_payload_data;
@@ -87,7 +87,7 @@ void websocket_request_parser::parse(int client_socket, std::string && input_dat
   }
   //std::cout << "payload_length " << payload_length << "\n mask_key " << mask_key << "\n";
   //std::cout << "masked_payload_data " << masked_payload_data << "\n";
-  //std::cout << "unmasked_payload_data " << unmasked_payload_data << "\n";
+  std::cout << "unmasked_payload_data " << unmasked_payload_data << "\n";
   
   //application_context_->ws_ioc_->res_->do_create_response(client_socket, {});
 }

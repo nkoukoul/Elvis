@@ -19,14 +19,14 @@ class request_parser{
 public:
   request_parser() = default;
 
-  virtual void parse(int client_socket, std::string && input_data) = 0;
+  virtual void parse(int const client_socket, std::string && input_data) const = 0;
 };
 
 class http_request_parser: public request_parser{
 public:
   http_request_parser(app * application_context = nullptr);
 
-  void parse(int client_socket, std::string && input_data) override;
+  void parse(int const client_socket, std::string && input_data) const override;
 
 private:
   app * application_context_;
@@ -36,7 +36,7 @@ class websocket_request_parser: public request_parser{
 public:
   websocket_request_parser(app * application_context = nullptr);
 
-  void parse(int client_socket, std::string && input_data) override;
+  void parse(int const client_socket, std::string && input_data) const override;
 
 private:
   app * application_context_;
@@ -50,7 +50,7 @@ public:
     request_ = std::move(request);
   }
   
-  void do_parse(int client_socket, std::string && input_data){
+  void do_parse(int const client_socket, std::string && input_data) const{
     return request_->parse(client_socket, std::move(input_data));
   }
 

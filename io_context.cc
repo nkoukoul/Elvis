@@ -77,13 +77,12 @@ void tcp_server::handle_connections(){
   }
 }
 
-void tcp_server::do_read(int client_socket){
-  int in = client_socket;  
+void tcp_server::do_read(int const client_socket){
   std::string input_data;
   char inbuffer[MAXBUF], *p = inbuffer;
 
   // Read data from client
-  int bytes_read = read(in, inbuffer, MAXBUF);
+  int bytes_read = read(client_socket, inbuffer, MAXBUF);
   if ( bytes_read <= 0 ){
     close(client_socket);
     return; //client closed connection
@@ -98,9 +97,8 @@ void tcp_server::do_read(int client_socket){
 }
 
 
-void tcp_server::do_write(int client_socket, std::string && output_data, bool close_connection){
-  int out = client_socket;
-  write(out, output_data.c_str(), output_data.size());
+void tcp_server::do_write(int const client_socket, std::string && output_data, bool close_connection){
+  write(client_socket, output_data.c_str(), output_data.size());
   //close socket if http
   if (close_connection){
     close(client_socket);
@@ -145,14 +143,13 @@ void websocket_server::handle_connections(){
       }else if (events[i].events & EPOLLIN){
 	do_read(events[i].data.fd);
       }else if (events[i].events & EPOLLOUT){
-	std::string dummy_data = "bla bla";
 	res_->do_create_response(events[i].data.fd, {});
       }
     }
   }
 }
 
-void websocket_server::register_socket(int client_socket){
+void websocket_server::register_socket(int const client_socket){
   std::lock_guard<std::mutex> guard(socket_state_mutex_);
   non_block_socket(client_socket);
   event.data.fd = client_socket;
@@ -164,18 +161,17 @@ void websocket_server::register_socket(int client_socket){
   return;
 }
 
-void websocket_server::do_read(int client_socket){
-  int in = client_socket;
+void websocket_server::do_read(int const client_socket){
   char inbuffer[MAXBUF];
   std::string input_data;
   std::string payload_in_bits;
   // Read data from client
   while(true){
-    int bytes_read = read(in, inbuffer, MAXBUF);
+    int bytes_read = read(client_socket, inbuffer, MAXBUF);
     int message_length;
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	std::cout << "finished reading data from client\n";
+	//std::cout << "finished reading data from client\n";
 	break;
       } else {
 	//perror("read()");
@@ -185,7 +181,7 @@ void websocket_server::do_read(int client_socket){
       std::cout << "ws client disconnected \n";
       close(client_socket);
     }else {
-      std::cout << "read " << bytes_read << " bytes \n";
+      //std::cout << "read " << bytes_read << " bytes \n";
       //for (int i = 0; i <7; i++){
       //std::cout << inbuffer[i + 9] <<"\n";
       //}
@@ -199,9 +195,8 @@ void websocket_server::do_read(int client_socket){
   return;
 }
 
-void websocket_server::do_write(int client_socket, std::string && output_data, bool close_connection){
-  int out = client_socket;  
-  if (write(out, output_data.c_str(), output_data.size()) < 0 || close_connection){
+void websocket_server::do_write(int const client_socket, std::string && output_data, bool close_connection){
+  if (write(client_socket, output_data.c_str(), output_data.size()) < 0 || close_connection){
     std::cout << "error during write\n";
     close(client_socket);
     //socket_state_.erase(client_socket);

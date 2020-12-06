@@ -20,7 +20,7 @@ class response_creator{
 public:
   response_creator() = default;
 
-  virtual void create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) = 0;
+  virtual void create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const = 0;
 
 };
 
@@ -28,7 +28,7 @@ class http_response_creator: public response_creator{
 public:
   http_response_creator(app * application_context = nullptr);
 
-  void create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) override;
+  void create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const override;
 
 private:
   app * application_context_;
@@ -38,7 +38,7 @@ class websocket_response_creator: public response_creator{
 public:
   websocket_response_creator(app * application_context = nullptr);
 
-  void create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) override;
+  void create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const override;
 
 private:
   app * application_context_;
@@ -52,7 +52,7 @@ public:
     response_ = std::move(response);
   }
   
-  void do_create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data){
+  void do_create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const {
     return response_->create_response(client_socket, std::move(deserialized_input_data));
   }
 

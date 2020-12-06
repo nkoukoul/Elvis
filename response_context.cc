@@ -11,7 +11,7 @@
 
 http_response_creator::http_response_creator(app * application_context):application_context_(application_context){}
 
-void http_response_creator::create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data){
+void http_response_creator::create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const {
   
   std::string status;
   std::string controller_data;
@@ -68,7 +68,7 @@ void http_response_creator::create_response(int client_socket, std::unordered_ma
 
 websocket_response_creator::websocket_response_creator(app * application_context):application_context_(application_context){}
 
-void websocket_response_creator::create_response(int client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data){
+void websocket_response_creator::create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const {
   bool close_connection = false;
   if (deserialized_input_data["Connection"] == "close"){
     close_connection = true;

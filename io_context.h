@@ -26,16 +26,16 @@ class io_context{
 public:
   io_context() = default;
   virtual void run() = 0;
-  virtual void do_read(int client_socket) = 0;
-  virtual void do_write(int client_socket, std::string && output_data, bool close_connection) = 0;
+  virtual void do_read(int const client_socket) = 0;
+  virtual void do_write(int const client_socket, std::string && output_data, bool close_connection) = 0;
 };
 
 class tcp_server: public io_context{
 public:
   tcp_server(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac);  
   void run() override;
-  void do_read(int client_socket) override;
-  void do_write(int client_socket, std::string && output_data, bool close_connection) override;
+  void do_read(int const client_socket) override;
+  void do_write(int const client_socket, std::string && output_data, bool close_connection) override;
   
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
@@ -53,9 +53,9 @@ class websocket_server: public io_context{
 public:
   websocket_server(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac);  
   void run() override;
-  void do_read(int client_socket) override;
-  void do_write(int client_socket, std::string && output_data, bool close_connection) override;
-  void register_socket(int client_socket);
+  void do_read(int const client_socket) override;
+  void do_write(int const client_socket, std::string && output_data, bool close_connection) override;
+  void register_socket(int const client_socket);
 
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
