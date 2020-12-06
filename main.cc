@@ -31,7 +31,8 @@ int main(int argc, char * argv[])
   my_app->configure(
 		    std::move(std::make_unique<tcp_server>(ipaddr, port, my_app)),
 		    std::move(std::make_unique<websocket_server>(ipaddr, port)), 
-		    std::move(std::make_unique<json_util_context>()), 
+		    std::move(std::make_unique<json_util_context>()),
+		    std::move(std::make_unique<utils>()),  
 		    std::move(rm),
 		    std::move(std::make_unique<http_request_context>(my_app)),
 		    std::move(std::make_unique<http_response_context>(my_app)));

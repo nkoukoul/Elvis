@@ -15,6 +15,7 @@
 #include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
+#include "utils.h"
 #include "response_context.h"
 #include "t_cache.h"
 
@@ -32,7 +33,8 @@ public:
 
   void configure(std::unique_ptr<io_context> http_ioc = nullptr,
 		 std::unique_ptr<websocket_server> ws_ioc = nullptr, 
-		 std::unique_ptr<i_json_util_context> juc = nullptr, 
+		 std::unique_ptr<i_json_util_context> juc = nullptr,
+		 std::unique_ptr<utils> uc = nullptr, 
 		 std::unique_ptr<route_manager> rm = nullptr,
 		 std::unique_ptr<i_request_context> req = nullptr,
 		 std::unique_ptr<i_response_context> res = nullptr);
@@ -63,6 +65,7 @@ public:
   std::unique_ptr<io_context> http_ioc_;
   std::unique_ptr<websocket_server> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
+  std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;

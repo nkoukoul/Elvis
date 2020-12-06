@@ -7,6 +7,7 @@ std::mutex app::app_mutex_;
 void app::configure(std::unique_ptr<io_context> http_ioc,
 		    std::unique_ptr<websocket_server> ws_ioc, 
 		    std::unique_ptr<i_json_util_context> juc, 
+		    std::unique_ptr<utils> uc,
 		    std::unique_ptr<route_manager> rm,
 		    std::unique_ptr<i_request_context> req,
 		    std::unique_ptr<i_response_context> res){
@@ -18,6 +19,8 @@ void app::configure(std::unique_ptr<io_context> http_ioc,
     ws_ioc_ = std::move(ws_ioc);
   if (juc)
     juc_ = std::move(juc);
+  if (uc)
+    uc_ = std::move(uc);
   if(rm)
     rm_ = std::move(rm);
   if (req)
