@@ -37,7 +37,8 @@ public:
 		 std::unique_ptr<i_json_util_context> juc = nullptr,
 		 std::unique_ptr<utils> uc = nullptr, 
 		 std::unique_ptr<route_manager> rm = nullptr,
-		 std::unique_ptr<i_event_queue> e_q = nullptr);
+		 std::unique_ptr<i_event_queue> e_q = nullptr,
+		 std::unique_ptr<i_cache> app_cache = nullptr);
   
   void run(int thread_number){
     if (http_ioc_){
@@ -68,7 +69,7 @@ public:
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_event_queue> e_q_;
-  std::unique_ptr<t_cache<std::string, std::string>> app_cache_;
+  std::unique_ptr<i_cache> app_cache_;
   static std::mutex app_mutex_;
 protected:
   app() = default;

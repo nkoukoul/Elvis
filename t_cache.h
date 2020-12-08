@@ -18,8 +18,17 @@
 #include <unordered_map>
 #include <mutex>
 
+class i_cache{
+public:
+  virtual ~i_cache(){};
+  template<class K, class V, class U, class X> void insert(std::pair<U,X> && k_v_pair);
+  template<class K, class V> bool find(K const key);
+  template<class K, class V> std::pair<K,V> operator [](K const key);
+  virtual void state(){};
+};
+
 template<class K, class V>
-class t_cache{
+class t_cache: public i_cache{
 public:
   t_cache(int capacity):capacity_(capacity){};
     
@@ -81,5 +90,17 @@ private:
   }
 
 };
+
+template<class K, class V, class U, class X> void i_cache::insert(std::pair<U,X> && k_v_pair){
+  return dynamic_cast<t_cache<K,V>&>(*this).insert(std::move(k_v_pair));
+}
+
+template<class K, class V> bool i_cache::find(K const key){
+  return dynamic_cast<t_cache<K,V>&>(*this).find(key);
+}
+
+template<class K, class V> std::pair<K,V> i_cache::operator [](K const key){
+  return dynamic_cast<t_cache<K,V>&>(*this)[key];
+}
 
 #endif //T_CACHE_H

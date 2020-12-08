@@ -9,7 +9,8 @@ void app::configure(std::unique_ptr<tcp_server> http_ioc,
 		    std::unique_ptr<i_json_util_context> juc, 
 		    std::unique_ptr<utils> uc,
 		    std::unique_ptr<route_manager> rm,
-		    std::unique_ptr<i_event_queue> e_q){
+		    std::unique_ptr<i_event_queue> e_q,
+		    std::unique_ptr<i_cache> app_cache){
   
   std::lock_guard<std::mutex> guard(app_mutex_);
   if (http_ioc)
@@ -24,6 +25,8 @@ void app::configure(std::unique_ptr<tcp_server> http_ioc,
     rm_ = std::move(rm);
   if(e_q)
     e_q_ = std::move(e_q);
+  if(app_cache)
+    app_cache_ = std::move(app_cache);
   return;
 }
   
@@ -32,7 +35,6 @@ app * app::get_instance(){
   std::lock_guard<std::mutex> guard(app_mutex_);
   if (app_instance_ == nullptr) {
     app_instance_ = new app();
-    app_instance_->app_cache_ = std::make_unique<t_cache<std::string, std::string>>(5);
   }
   return app_instance_;
 }
