@@ -127,6 +127,7 @@ void websocket_server::run(){
 }
 
 void websocket_server::handle_connections(){
+  std::string message_to_deliver;
   while (true){
     //std::cout << "handling ws connections\n";
     int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, -1);
@@ -134,6 +135,12 @@ void websocket_server::handle_connections(){
     //perror("epoll_wait()");
     //return 1;
     //}
+    std::string data = ac_->e_q_->consume_event<std::string>();
+    if (!data.empty()){
+      message_to_deliver = data;
+    }
+    //ac_->e_q_->print_queue_elements();
+
     for (int i = 0; i < nevents; i++) {
       if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)) {
         // error case
@@ -143,7 +150,9 @@ void websocket_server::handle_connections(){
       }else if (events[i].events & EPOLLIN){
 	do_read(events[i].data.fd);
       }else if (events[i].events & EPOLLOUT){
-	res_->do_create_response(events[i].data.fd, {});
+	if (!message_to_deliver.empty()){
+	  res_->do_create_response(events[i].data.fd, {{"data", message_to_deliver}, {"Connection", "open"}});
+	}
       }
     }
   }
@@ -163,12 +172,10 @@ void websocket_server::register_socket(int const client_socket){
 
 void websocket_server::do_read(int const client_socket){
   char inbuffer[MAXBUF];
-  std::string input_data;
-  std::string payload_in_bits;
+  std::string input_websocket_frame_in_bits;
   // Read data from client
   while(true){
     int bytes_read = read(client_socket, inbuffer, MAXBUF);
-    int message_length;
     if (bytes_read == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	//std::cout << "finished reading data from client\n";
@@ -182,16 +189,13 @@ void websocket_server::do_read(int const client_socket){
       close(client_socket);
     }else {
       //std::cout << "read " << bytes_read << " bytes \n";
-      //for (int i = 0; i <7; i++){
-      //std::cout << inbuffer[i + 9] <<"\n";
-      //}
       for (int i = 0; i < bytes_read; i++){
 	std::bitset<8> bb(inbuffer[i]);
-	payload_in_bits += bb.to_string();
+	input_websocket_frame_in_bits += bb.to_string();
       }
     }
   }
-  req_->do_parse(client_socket, std::move(payload_in_bits));
+  req_->do_parse(client_socket, std::move(input_websocket_frame_in_bits));
   return;
 }
 
@@ -199,7 +203,6 @@ void websocket_server::do_write(int const client_socket, std::string && output_d
   if (write(client_socket, output_data.c_str(), output_data.size()) < 0 || close_connection){
     std::cout << "error during write\n";
     close(client_socket);
-    //socket_state_.erase(client_socket);
   }
   return;
 }

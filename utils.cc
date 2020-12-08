@@ -1,7 +1,4 @@
 #include "utils.h"
-#include <bitset>
-#include <vector>
-#include <openssl/sha.h>
 
 std::string utils::daytime_(){
   time_t rawtime;
@@ -77,4 +74,24 @@ std::string utils::generate_ws_key(std::string ws_client_key){
     input += (char)hash[i];
   }
   return base_64_encode(input);
+}
+
+std::string utils::read_from_file(std::string filepath, std::string filename){
+  std::streampos size;
+  char * memblock;
+  std::string output;
+  std::ifstream file (filepath+filename, std::ios::in|std::ios::binary|std::ios::ate);
+  if (file.is_open())
+  {
+    size = file.tellg();
+    memblock = new char[(int)size+1];
+    file.seekg (0, std::ios::beg);
+    file.read (memblock, size);
+    file.close();
+    memblock[size] = '\0';
+    //cout << "the entire file content is in memory";
+    output = memblock;
+    delete[] memblock;
+  }
+  return output;
 }

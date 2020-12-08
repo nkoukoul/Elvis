@@ -47,25 +47,71 @@ template<class T> const T & base_event::get_data() const
 { return dynamic_cast<const event<T>&>(*this).get_data(); }
 
 template<class T, class U> void base_event::set_data(U && data)
-{ return dynamic_cast<event<T>>(*this).set_value(std::move(data)); }
+{ return dynamic_cast<event<T>&>(*this).set_value(std::move(data)); }
 
-template <class D>
-class event_queue{
+
+class i_event_queue{
 public:
-  event_queue(int const capacity, app * ac);
-  ~event_queue();
-  int size() const;
-  bool empty() const;
-  D consume_event();
-  void produce_event(D && data);
-  void print_queue_elements() const;
+  virtual ~i_event_queue(){};
+  template<class D> D consume_event();
+  template<class D, class U> void produce_event(U && data);
+  virtual void print_queue_elements() const{};
+};
+
+
+template<class D>
+class event_queue: public i_event_queue{
+public:
+  
+  event_queue(int const capacity, app * ac):capacity_(capacity), ac_(ac){
+    e_q_.reserve(capacity_);
+    std::make_heap(e_q_.begin(),e_q_.end());
+  }
+  //~event_queue();
+  int size() const {return e_q_.size();}
+
+  bool empty() const {return e_q_.empty();}
+
+  D consume_event(){
+    std::lock_guard<std::mutex> guard(queue_lock_);
+    D data;
+    if (!empty()){
+      std::pop_heap(e_q_.begin(), e_q_.end());
+      data = e_q_.back()->get_data<D>();
+      e_q_.pop_back();
+    }
+    return data;
+  }
+
+  void produce_event(D && data){
+    std::lock_guard<std::mutex> guard(queue_lock_);
+    if (e_q_.size()>capacity_)
+      return;  
+    e_q_.emplace_back(std::make_unique<event<D>>(100, std::move(data)));
+    std::push_heap(e_q_.begin(),e_q_.end());
+    return;
+  }
+  
+  void print_queue_elements() const override{
+    for (int i = 0; i < e_q_.size(); i++){
+      D data = e_q_[i]->get_data<D>();
+      std::cout << data << "\n";
+    }
+  }
+  
 private:
   app * ac_;
   std::mutex queue_lock_;
-  int get_priority(std::string const action) const;
+  //int get_priority(std::string const action) const;
   std::vector<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
 };
+
+template<class D> D i_event_queue::consume_event()
+{ return dynamic_cast<event_queue<D>&>(*this).consume_event(); }
+
+template<class D, class U> void i_event_queue::produce_event(U && data)
+{ return dynamic_cast<event_queue<D>&>(*this).produce_event(std::move(data)); }
 
 
 #endif // EVENT_QUEUE_H

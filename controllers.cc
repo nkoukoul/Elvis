@@ -8,27 +8,6 @@
 #include "controllers.h"
 #include "app_context.h"
 #include "models.h"
-#include <fstream>
-
-std::string read_from_file(std::string filepath, std::string filename){
-  std::streampos size;
-  char * memblock;
-  std::string output;
-  std::ifstream file (filepath+filename, std::ios::in|std::ios::binary|std::ios::ate);
-  if (file.is_open())
-  {
-    size = file.tellg();
-    memblock = new char[(int)size+1];
-    file.seekg (0, std::ios::beg);
-    file.read (memblock, size);
-    file.close();
-    memblock[size] = '\0';
-    //cout << "the entire file content is in memory";
-    output = memblock;
-    delete[] memblock;
-  }
-  return output;
-}
 
 //route is /file/{filename}
 std::string file_get_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac){
@@ -36,7 +15,7 @@ std::string file_get_controller::run(std::unordered_map<std::string, std::string
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
   std::string filename = deserialized_input_data["url"].substr(index+1);
   if (!ac->app_cache_->find(filename)){
-    ac->app_cache_->insert(std::make_pair(filename, std::move(read_from_file("", filename))));
+    ac->app_cache_->insert(std::make_pair(filename, std::move(ac->uc_->read_from_file("", filename))));
   }
   return (*(ac->app_cache_))[filename].second;
 }
@@ -48,7 +27,16 @@ std::string file_post_controller::run(std::unordered_map<std::string, std::strin
   // this is json data so further deserialization is needed
   fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
   fm->repr();
-  ac->app_cache_->insert(std::make_pair(fm->get_filename(), std::move(read_from_file("", fm->get_filename()))));
+  ac->app_cache_->insert(std::make_pair(fm->get_filename(), std::move(ac->uc_->read_from_file("", fm->get_filename()))));
   ac->app_cache_->state();
+  return {};
+}
+
+std::string trigger_post_controller::run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac){
+  std::unique_ptr<file_model> fm = std::make_unique<file_model>();
+  // this is json data so further deserialization is needed
+  fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
+  ac->e_q_->produce_event<std::string>(std::move(ac->uc_->read_from_file("", fm->get_filename())));
+  ac->e_q_->print_queue_elements();
   return {};
 }

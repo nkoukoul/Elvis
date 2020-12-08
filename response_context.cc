@@ -73,8 +73,8 @@ void websocket_response_creator::create_response(int const client_socket, std::u
   if (deserialized_input_data["Connection"] == "close"){
     close_connection = true;
   }
-  std::string dammy_data = "bla bla";
-  unsigned int len = dammy_data.size();
+  //std::string dammy_data = "bla bla";
+  unsigned int len = deserialized_input_data["data"].size();
   std::string extra_len = "";
   std::string response;
   std::bitset<16> bs;
@@ -119,7 +119,7 @@ void websocket_response_creator::create_response(int const client_socket, std::u
   response += (first_part & 0x0000ff00) >> 8; //MSB
   response += first_part & 0x000000ff; //LSB
   response += extra_len;
-  response += dammy_data;
+  response += deserialized_input_data["data"];
   //std::cout << response << "\n";
   return application_context_->ws_ioc_->do_write(client_socket, std::move(response), close_connection);
 }

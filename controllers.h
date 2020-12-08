@@ -32,4 +32,10 @@ public:
   std::string run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac) override;
 };
 
+class trigger_post_controller: public i_controller{
+public:
+  trigger_post_controller() = default;
+  std::string run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac) override;
+};
+
 #endif //CONTROLLERS_H
