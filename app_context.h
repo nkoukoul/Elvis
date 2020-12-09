@@ -43,17 +43,46 @@ public:
   void run(int thread_number){
     if (http_ioc_){
       io_context_threads_.reserve(thread_number - 1);
-      for(auto i = thread_number - 1; i > 0; --i)
+      for(auto i = thread_number - 2; i > 0; --i){
         io_context_threads_.emplace_back(
 					 [&http_ioc = (this->http_ioc_)]
 					 {
 					   http_ioc->run();
 					 });
-      if (ws_ioc_)
-	ws_ioc_->run();
-      else
-	http_ioc_->run();
+      }
+      
+      if (ws_ioc_){
+	io_context_threads_.emplace_back(
+					 [&ws_ioc = (this->ws_ioc_)]
+					 {
+					   ws_ioc->run();
+					 });
+      }else{
+	io_context_threads_.emplace_back(
+					 [&http_ioc = (this->http_ioc_)]
+					 {
+					   http_ioc->run();
+					 });
+      }
+    
     }
+    
+    //main loop event queue
+    if (e_q_){
+      std::string broadcast_message;
+      while (true){
+	while (e_q_->empty()){
+	  std::this_thread::yield();
+	}
+	broadcast_message = e_q_->consume_event<std::string>();
+	for (auto fd : ws_ioc_->broadcast_fd_list){
+	  if (fd){
+	    ws_ioc_->res_->do_create_response(fd, {{"data", broadcast_message}, {"Connection", "open"}});
+	  }
+	}
+      }
+    }
+    
 
     // Block until all the threads exit
     for(auto& t : io_context_threads_)

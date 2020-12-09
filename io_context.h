@@ -59,6 +59,7 @@ public:
 
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
+  std::vector<int> broadcast_fd_list;
 private:
   app * ac_;
   std::mutex socket_state_mutex_;

@@ -55,6 +55,7 @@ public:
   virtual ~i_event_queue(){};
   template<class D> D consume_event();
   template<class D, class U> void produce_event(U && data);
+  virtual bool empty() const = 0;
   virtual void print_queue_elements() const{};
 };
 

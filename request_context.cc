@@ -87,7 +87,7 @@ void websocket_request_parser::parse(int const client_socket, std::string && inp
   }
   //std::cout << "payload_length " << payload_length << "\n mask_key " << mask_key << "\n";
   //std::cout << "masked_payload_data " << masked_payload_data << "\n";
-  std::cout << "unmasked_payload_data " << unmasked_payload_data << "\n";
-  
-  //application_context_->ws_ioc_->res_->do_create_response(client_socket, {});
+  //std::cout << "unmasked_payload_data " << unmasked_payload_data << "\n";
+  //echo functinality for now
+  return application_context_->ws_ioc_->res_->do_create_response(client_socket, {{"data", unmasked_payload_data}, {"Connection", "open"}});
 }
