@@ -11,6 +11,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <functional>
 
 class app;
 

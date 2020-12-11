@@ -10,6 +10,7 @@
 #include <memory>
 #include <thread>
 #include <string>
+#include <functional>
 #include "app_context.h"
 #include "controllers.h"
 
@@ -26,7 +27,7 @@ int main(int argc, char * argv[])
   app * my_app = app::get_instance();
   
   //Here we create an event queue
-  std::unique_ptr<event_queue<std::string>> e_q = std::make_unique<event_queue<std::string>>(10, my_app);
+  std::unique_ptr<event_queue<std::function<void()>>> e_q = std::make_unique<event_queue<std::function<void()>>>(100, my_app);
 
   //Here we create a cache
   std::unique_ptr<t_cache<std::string, std::string>> app_cache = std::make_unique<t_cache<std::string, std::string>>(5);

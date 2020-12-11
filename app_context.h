@@ -69,17 +69,12 @@ public:
     
     //main loop event queue
     if (e_q_){
-      std::string broadcast_message;
       while (true){
 	while (e_q_->empty()){
 	  std::this_thread::yield();
 	}
-	broadcast_message = e_q_->consume_event<std::string>();
-	for (auto fd : ws_ioc_->broadcast_fd_list){
-	  if (fd){
-	    ws_ioc_->res_->do_create_response(fd, {{"data", broadcast_message}, {"Connection", "open"}});
-	  }
-	}
+	auto async_func = e_q_->consume_event<std::function<void()>>();
+	async_func();
       }
     }
     

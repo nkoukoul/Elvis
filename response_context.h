@@ -52,7 +52,7 @@ public:
     response_ = std::move(response);
   }
   
-  void do_create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const {
+  void do_create_response(int const client_socket, std::unordered_map<std::string, std::string> deserialized_input_data) const {
     return response_->create_response(client_socket, std::move(deserialized_input_data));
   }
 

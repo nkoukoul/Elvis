@@ -74,6 +74,7 @@ void tcp_server::handle_connections(){
     }
     
     do_read(client_socket);
+    //std::function<void()> f = std::bind(&io_context::do_read, ac_->http_ioc_.get(), fd, input_args);
   }
 }
 

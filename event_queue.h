@@ -56,7 +56,6 @@ public:
   template<class D> D consume_event();
   template<class D, class U> void produce_event(U && data);
   virtual bool empty() const = 0;
-  virtual void print_queue_elements() const{};
 };
 
 
@@ -91,13 +90,6 @@ public:
     e_q_.emplace_back(std::make_unique<event<D>>(100, std::move(data)));
     std::push_heap(e_q_.begin(),e_q_.end());
     return;
-  }
-  
-  void print_queue_elements() const override{
-    for (int i = 0; i < e_q_.size(); i++){
-      D data = e_q_[i]->get_data<D>();
-      std::cout << data << "\n";
-    }
   }
   
 private:
