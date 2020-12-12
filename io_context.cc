@@ -73,8 +73,8 @@ void tcp_server::handle_connections(){
       continue;
     }
     
-    do_read(client_socket);
-    //std::function<void()> f = std::bind(&io_context::do_read, ac_->http_ioc_.get(), fd, input_args);
+    //do_read(client_socket);
+    ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_read, ac_->http_ioc_.get(), client_socket)));
   }
 }
 
@@ -93,12 +93,12 @@ void tcp_server::do_read(int const client_socket){
     input_data += inbuffer[i];
   }
   input_data += '\n'; //add end of line for getline
- 
-  return req_->do_parse(client_socket, std::move(input_data));
+  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->http_ioc_->req_.get(), client_socket, std::move(input_data))));
+  //return req_->do_parse(client_socket, std::move(input_data));
 }
 
 
-void tcp_server::do_write(int const client_socket, std::string && output_data, bool close_connection){
+void tcp_server::do_write(int const client_socket, std::string output_data, bool close_connection){
   write(client_socket, output_data.c_str(), output_data.size());
   //close socket if http
   if (close_connection){
@@ -196,7 +196,7 @@ void websocket_server::do_read(int const client_socket){
   return req_->do_parse(client_socket, std::move(input_websocket_frame_in_bits));
 }
 
-void websocket_server::do_write(int const client_socket, std::string && output_data, bool close_connection){
+void websocket_server::do_write(int const client_socket, std::string output_data, bool close_connection){
   if (write(client_socket, output_data.c_str(), output_data.size()) < 0 || close_connection){
     std::cout << "error during write\n";
     close(client_socket);

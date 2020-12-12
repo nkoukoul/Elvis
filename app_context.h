@@ -40,52 +40,7 @@ public:
 		 std::unique_ptr<i_event_queue> e_q = nullptr,
 		 std::unique_ptr<i_cache> app_cache = nullptr);
   
-  void run(int thread_number){
-    if (http_ioc_){
-      io_context_threads_.reserve(thread_number - 1);
-      for(auto i = thread_number - 2; i > 0; --i){
-        io_context_threads_.emplace_back(
-					 [&http_ioc = (this->http_ioc_)]
-					 {
-					   http_ioc->run();
-					 });
-      }
-      
-      if (ws_ioc_){
-	io_context_threads_.emplace_back(
-					 [&ws_ioc = (this->ws_ioc_)]
-					 {
-					   ws_ioc->run();
-					 });
-      }else{
-	io_context_threads_.emplace_back(
-					 [&http_ioc = (this->http_ioc_)]
-					 {
-					   http_ioc->run();
-					 });
-      }
-    
-    }
-    
-    //main loop event queue
-    if (e_q_){
-      while (true){
-	while (e_q_->empty()){
-	  std::this_thread::yield();
-	}
-	auto async_func = e_q_->consume_event<std::function<void()>>();
-	async_func();
-      }
-    }
-    
-
-    // Block until all the threads exit
-    for(auto& t : io_context_threads_)
-      if (t.joinable())
-	t.join();
-
-    return;
-  }
+  void run(int thread_number);
 
   std::unique_ptr<tcp_server> http_ioc_;
   std::unique_ptr<websocket_server> ws_ioc_;
@@ -101,7 +56,7 @@ protected:
   
 private:
   static app * app_instance_;
-  std::vector<std::thread> io_context_threads_;
+  std::vector<std::thread> thread_pool_;
 };
 
 #endif //APP_CONTEXT_H

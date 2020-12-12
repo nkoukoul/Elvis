@@ -62,8 +62,8 @@ void http_response_creator::create_response(int const client_socket, std::unorde
     response += controller_data + "\r\n";
 
   //std::cout << "response is : \n" << response << "\n";
-  
-  return application_context_->http_ioc_->do_write(client_socket, std::move(response), close_connection);
+  return application_context_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_write, application_context_->http_ioc_.get(), client_socket, std::move(response), close_connection)));
+    //return application_context_->http_ioc_->do_write(client_socket, std::move(response), close_connection);
 }
 
 websocket_response_creator::websocket_response_creator(app * application_context):application_context_(application_context){}

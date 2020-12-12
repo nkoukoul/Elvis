@@ -29,7 +29,58 @@ void app::configure(std::unique_ptr<tcp_server> http_ioc,
     app_cache_ = std::move(app_cache);
   return;
 }
-  
+
+void app::run(int thread_number){
+  if (e_q_){
+    thread_pool_.reserve(thread_number - 1);
+    for(auto i = thread_number - 3; i > 0; --i){
+      thread_pool_.emplace_back(
+				[&e_q = (this->e_q_)]
+				{
+				  while (true){
+				    while (e_q->empty()){
+				      std::this_thread::yield();
+				    }
+				    auto async_func = e_q->consume_event<std::function<void()>>();
+				    try{
+				      async_func();
+				    }
+				    catch (const std::bad_function_call& e){
+				      ;;
+				    }
+				  }
+				});
+    }
+      
+    if (ws_ioc_){
+      thread_pool_.emplace_back(
+				[&ws_ioc = (this->ws_ioc_)]
+				{
+				  ws_ioc->run();
+				});
+    }
+    
+  }
+    
+  //main io_context
+  if (http_ioc_){
+    thread_pool_.emplace_back(
+			      [&http_ioc = (this->http_ioc_)]
+			      {
+				http_ioc->run();
+			      });
+
+    http_ioc_->run();
+  }
+    
+
+  // Block until all the threads exit
+  for(auto& t : thread_pool_)
+    if (t.joinable())
+      t.join();
+
+  return;
+}  
 
 app * app::get_instance(){
   std::lock_guard<std::mutex> guard(app_mutex_);
