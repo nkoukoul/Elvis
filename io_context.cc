@@ -72,8 +72,7 @@ void tcp_server::handle_connections(){
       std::cout << "Error while accepting connection";
       continue;
     }
-    
-    //do_read(client_socket);
+    std::cout << "socket " << client_socket << " connected" << std::endl;
     ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_read, ac_->http_ioc_.get(), client_socket)));
   }
 }
@@ -93,8 +92,8 @@ void tcp_server::do_read(int const client_socket){
     input_data += inbuffer[i];
   }
   input_data += '\n'; //add end of line for getline
+  std::cout << "socket " << client_socket << " read data" << std::endl;
   return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->http_ioc_->req_.get(), client_socket, std::move(input_data))));
-  //return req_->do_parse(client_socket, std::move(input_data));
 }
 
 
@@ -107,7 +106,7 @@ void tcp_server::do_write(int const client_socket, std::string output_data, bool
     //websocket connection for now
     ac_->ws_ioc_->register_socket(client_socket);
   }
-  
+  std::cout << "socket " << client_socket << " write close" << std::endl;
   return;
 }
 
@@ -144,11 +143,7 @@ void websocket_server::handle_connections(){
         continue;
       }else if (events[i].events & EPOLLIN){
 	do_read(events[i].data.fd);
-      }/*else if (events[i].events & EPOLLOUT){
-	if (!message_to_deliver.empty()){
-	  
-	}
-	}*/
+      }
     }
   }
 }

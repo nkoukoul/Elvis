@@ -50,6 +50,7 @@ void http_request_parser::parse(int const client_socket, std::string && input_da
   //for (auto elem : deserialized_input_data)
   //std::cout << "key " << elem.first << " value " << elem.second << " with size " << elem.second.size() << "\n";
   //std::cout << "\n";
+  std::cout << "socket " << client_socket << " parsed" << std::endl;
   return application_context_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_response_context::do_create_response, application_context_->http_ioc_->res_.get(), client_socket, std::move(deserialized_input_data))));
   //return application_context_->http_ioc_->res_->do_create_response(client_socket, std::move(deserialized_input_data));
 }

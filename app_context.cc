@@ -33,7 +33,7 @@ void app::configure(std::unique_ptr<tcp_server> http_ioc,
 void app::run(int thread_number){
   if (e_q_){
     thread_pool_.reserve(thread_number - 1);
-    for(auto i = thread_number - 3; i > 0; --i){
+    for(auto i = thread_number - 2; i > 0; --i){
       thread_pool_.emplace_back(
 				[&e_q = (this->e_q_)]
 				{
@@ -51,25 +51,19 @@ void app::run(int thread_number){
 				  }
 				});
     }
-      
+  }
+    
+  //main io_context
+  if (http_ioc_){
+    
     if (ws_ioc_){
       thread_pool_.emplace_back(
 				[&ws_ioc = (this->ws_ioc_)]
 				{
 				  ws_ioc->run();
 				});
-    }
+    }    
     
-  }
-    
-  //main io_context
-  if (http_ioc_){
-    thread_pool_.emplace_back(
-			      [&http_ioc = (this->http_ioc_)]
-			      {
-				http_ioc->run();
-			      });
-
     http_ioc_->run();
   }
     
