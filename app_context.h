@@ -15,8 +15,10 @@
 #include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
+#include "utils.h"
 #include "response_context.h"
 #include "t_cache.h"
+#include "event_queue.h"
 
 class app{
 public:
@@ -30,24 +32,26 @@ public:
   // This is the static method that controls the access to the singleton
   static app * get_instance();
 
-  void configure(std::unique_ptr<io_context> ioc = nullptr, 
-		 std::unique_ptr<i_json_util_context> juc = nullptr, 
+  void configure(std::unique_ptr<tcp_server> http_ioc = nullptr,
+		 std::unique_ptr<websocket_server> ws_ioc = nullptr, 
+		 std::unique_ptr<i_json_util_context> juc = nullptr,
+		 std::unique_ptr<utils> uc = nullptr, 
 		 std::unique_ptr<route_manager> rm = nullptr,
-		 std::unique_ptr<i_request_context> req = nullptr,
-		 std::unique_ptr<i_response_context> res = nullptr);
+		 std::unique_ptr<i_event_queue> e_q = nullptr);
   
   void run(int thread_number){
-    if (ioc_){
+    if (http_ioc_){
       io_context_threads_.reserve(thread_number - 1);
       for(auto i = thread_number - 1; i > 0; --i)
         io_context_threads_.emplace_back(
-					 [&ioc = (this->ioc_)]
+					 [&http_ioc = (this->http_ioc_)]
 					 {
-					   ioc->run(app_instance_);
+					   http_ioc->run();
 					 });
-  
-      ioc_->run(app_instance_);
-
+      if (ws_ioc_)
+	ws_ioc_->run();
+      else
+	http_ioc_->run();
     }
 
     // Block until all the threads exit
@@ -58,11 +62,12 @@ public:
     return;
   }
 
-  std::unique_ptr<io_context> ioc_;
+  std::unique_ptr<tcp_server> http_ioc_;
+  std::unique_ptr<websocket_server> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
+  std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
-  std::unique_ptr<i_request_context> req_;
-  std::unique_ptr<i_response_context> res_;
+  std::unique_ptr<i_event_queue> e_q_;
   std::unique_ptr<t_cache<std::string, std::string>> app_cache_;
   static std::mutex app_mutex_;
 protected:

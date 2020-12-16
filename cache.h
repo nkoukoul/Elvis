@@ -19,14 +19,6 @@ template<class K, class V>
 class cache{
 public:
   cache(int capacity):capacity_(capacity){};
-  bool empty(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    return cache_list_.empty();
-  }
-  int size(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    return cache_list_.size();
-  }
   
   void insert(std::pair<K,V> && k_v_pair){
     std::lock_guard<std::mutex> guard(cache_lock_);
@@ -53,7 +45,7 @@ public:
     return;
   }
 
-  bool find(K key){
+  bool find(K const key){
     std::lock_guard<std::mutex> guard(cache_lock_);
     return cache_map_.find(key) != cache_map_.end();
   }
@@ -73,6 +65,7 @@ public:
   }
 
   void state(){
+    std::lock_guard<std::mutex> guard(cache_lock_);
     for (auto it = cache_list_.begin(); it != cache_list_.end(); ++it){
       std::cout << "key: " << it->first << " value: " << it->second << "\n";
     }
@@ -83,6 +76,14 @@ private:
   std::mutex cache_lock_;
   std::list<std::pair<K, V>> cache_list_;
   std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator> cache_map_;
+
+  bool empty() const {
+    return cache_list_.empty();
+  }
+
+  int size() const {
+    return cache_list_.size();
+  }
 };
 
 #endif //CACHE_H

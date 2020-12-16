@@ -22,17 +22,7 @@ template<class K, class V>
 class t_cache{
 public:
   t_cache(int capacity):capacity_(capacity){};
-  
-  bool empty(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    return cache_.empty();
-  }
-  
-  int size(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    return cache_.size();
-  }
-  
+    
   void insert(std::pair<K,V> && k_v_pair){
     std::lock_guard<std::mutex> guard(cache_lock_);
     std::chrono::steady_clock::time_point insertion_time = std::chrono::steady_clock::now();
@@ -57,19 +47,19 @@ public:
     return;
   }
 
-  bool find(K key){
+  bool find(K const key){
     std::lock_guard<std::mutex> guard(cache_lock_);
     return cache_index_.find(key) != cache_index_.end();
   }
   
-  std::pair<K,V> operator [](K key){
+  std::pair<K,V> operator [](K const key) {
     std::lock_guard<std::mutex> guard(cache_lock_);
     if (cache_index_.find(key) == cache_index_.end()) return {}; 
-    int index = cache_index_[key];
-    return cache_[index].second;
+    return cache_[cache_index_[key]].second;
   }
 
   void state(){
+    std::lock_guard<std::mutex> guard(cache_lock_);
     auto end = std::chrono::steady_clock::now();
     for (auto it = cache_.begin(); it != cache_.end(); ++it){
       std::cout << "entry inserted before: " << std::chrono::duration_cast<std::chrono::seconds>(end - it->first).count() << " seconds key: " << it->second.first << " value: " << it->second.second << "\n";
@@ -81,6 +71,15 @@ private:
   std::mutex cache_lock_;
   std::vector<std::pair<std::chrono::steady_clock::time_point, std::pair<K, V>>> cache_;
   std::unordered_map<K, int> cache_index_;
+
+  bool empty() const {
+    return cache_.empty();
+  }
+  
+  int size() const {
+    return cache_.size();
+  }
+
 };
 
 #endif //T_CACHE_H
