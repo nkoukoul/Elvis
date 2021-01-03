@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -26,21 +26,17 @@ public:
     std::lock_guard<std::mutex> guard(route_manager_lock_);
     if (get_route(url, request_type))
     {
-      //std::cout << "url " << url << " request " << request_type << " exists\n";
       return route_map[url][request_type].get();
     }
     else
     {
-      //std::cout << "url " << url << " request " << request_type << " does not exist will try with suburl\n";
       std::size_t index = url.find_last_of("/");
       url = url.substr(0, index > 0 ? index : 0);
       if (get_route(url, request_type))
       {
-        //std::cout << "partial_url " << url << " request " << request_type << " exists\n";
         return route_map[url][request_type].get();
       }
     }
-    //std::cout << "url " << url << " request " << request_type << " does not exist\n";
     return {};
   }
 
@@ -48,7 +44,6 @@ public:
   {
     if (route_map.find(url) == route_map.end())
     {
-      //std::pair<std::string, std::unique_ptr<i_controller>> rt_pair = ;
       std::unordered_map<std::string, std::unique_ptr<i_controller>> request_types;
       request_types.insert(std::move(std::make_pair(request_type, std::move(controller))));
       route_map.insert(std::move(std::make_pair(url, std::move(request_types))));

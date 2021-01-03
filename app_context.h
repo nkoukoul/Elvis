@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md) 
 //
@@ -32,8 +32,8 @@ public:
   // This is the static method that controls the access to the singleton
   static app * get_instance();
 
-  void configure(std::unique_ptr<tcp_server> http_ioc = nullptr,
-		 std::unique_ptr<websocket_server> ws_ioc = nullptr, 
+  void configure(std::unique_ptr<tcp_handler> http_ioc = nullptr,
+		 std::unique_ptr<websocket_handler> ws_ioc = nullptr, 
 		 std::unique_ptr<i_json_util_context> juc = nullptr,
 		 std::unique_ptr<utils> uc = nullptr, 
 		 std::unique_ptr<route_manager> rm = nullptr,
@@ -42,8 +42,8 @@ public:
   
   void run(int thread_number);
 
-  std::unique_ptr<tcp_server> http_ioc_;
-  std::unique_ptr<websocket_server> ws_ioc_;
+  std::unique_ptr<tcp_handler> http_ioc_;
+  std::unique_ptr<websocket_handler> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;

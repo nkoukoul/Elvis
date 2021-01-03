@@ -1,11 +1,10 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
-
 
 #include <memory>
 #include <thread>
@@ -33,11 +32,11 @@ int main(int argc, char * argv[])
   std::unique_ptr<t_cache<std::string, std::string>> app_cache = std::make_unique<t_cache<std::string, std::string>>(5);
 
   //Here we create a tcp server and inject it with an http request/response context
-  std::unique_ptr<tcp_server> http_server = std::make_unique<tcp_server>
+  std::unique_ptr<tcp_handler> http_server = std::make_unique<tcp_handler>
     (ipaddr, port, std::move(std::make_unique<http_request_context>(my_app)), std::move(std::make_unique<http_response_context>(my_app)), my_app);
 
   //Here we create a handler for websocket connections and inject it with a websocket request/response context
-  std::unique_ptr<websocket_server> ws = std::make_unique<websocket_server>
+  std::unique_ptr<websocket_handler> ws = std::make_unique<websocket_handler>
     (ipaddr, port, std::move(std::make_unique<websocket_request_context>(my_app)), std::move(std::make_unique<websocket_response_context>(my_app)), my_app);
   
   //Route manager is used to connect endpoints with controllers
@@ -58,7 +57,5 @@ int main(int argc, char * argv[])
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 
   my_app->run(thread_number);
-  
-  
   return 0;
 }

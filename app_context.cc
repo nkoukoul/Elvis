@@ -1,10 +1,17 @@
+//
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+//
+// Distributed under the MIT License (See accompanying file LICENSE.md) 
+//
+// repository: https://github.com/nkoukoul/Elvis
+//
 #include "app_context.h"
 
 app *app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
-void app::configure(std::unique_ptr<tcp_server> http_ioc,
-                    std::unique_ptr<websocket_server> ws_ioc,
+void app::configure(std::unique_ptr<tcp_handler> http_ioc,
+                    std::unique_ptr<websocket_handler> ws_ioc,
                     std::unique_ptr<i_json_util_context> juc,
                     std::unique_ptr<utils> uc,
                     std::unique_ptr<route_manager> rm,
@@ -32,54 +39,28 @@ void app::configure(std::unique_ptr<tcp_server> http_ioc,
 
 void app::run(int thread_number)
 {
-  if (e_q_)
+  if (e_q_ && http_ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
-    for (auto i = thread_number - 2; i > 0; --i)
+    for (auto i = thread_number - 1; i > 0; --i)
     {
       thread_pool_.emplace_back(
-          [&e_q = (this->e_q_), &http_ioc = (this->http_ioc_)] {
-            e_q->produce_event<std::function<void()>>(std::move(std::bind(&io_context::run, http_ioc.get())));
-            while (true)
-            {
-              while (e_q->empty())
-              {
-                std::this_thread::yield();
-              }
-              auto async_func = e_q->consume_event<std::function<void()>>();
-              try
-              {
-                async_func();
-              }
-              catch (const std::bad_function_call &e)
-              {
-                ;
-                ;
-              }
-            }
+          [&http_ioc = (this->http_ioc_)] {
+            //e_q->produce_event<std::function<void()>>(std::move(std::bind(&io_context::run, http_ioc.get())));
+            http_ioc->run(app_instance_);
           });
     }
-  }
-
-  //main io_context
-  if (http_ioc_)
-  {
-
+    e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::handle_connections, http_ioc_.get())));
     if (ws_ioc_)
     {
-      //thread_pool_.emplace_back(
-      //[&ws_ioc = (this->ws_ioc_)]
-      //{
-      ws_ioc_->run();
-      //});
+      e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::handle_connections, ws_ioc_.get())));
     }
+    http_ioc_->run(app_instance_);
   }
-
   // Block until all the threads exit
   for (auto &t : thread_pool_)
     if (t.joinable())
       t.join();
-
   return;
 }
 

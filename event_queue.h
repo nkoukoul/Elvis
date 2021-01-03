@@ -96,7 +96,6 @@ public:
 private:
   app * ac_;
   std::mutex queue_lock_;
-  //int get_priority(std::string const action) const;
   std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
 };
