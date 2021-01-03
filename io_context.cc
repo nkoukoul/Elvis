@@ -6,7 +6,6 @@
 // repository: https://github.com/nkoukoul/Elvis
 //
 
-//#include <sys/time.h>
 #include <iostream>
 #include <sstream>
 #include <bitset>
@@ -84,7 +83,7 @@ void tcp_handler::handle_connections()
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      ;;//std::cout << "no connection available\n";
+      ;;//no incoming connection for non-blocking sockets
     }
     else
     {
@@ -93,7 +92,6 @@ void tcp_handler::handle_connections()
   } else {
     ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_read, ac_->http_ioc_.get(), client_socket)));
   }
-  //std::cout << "socket " << client_socket << " connected" << std::endl;
   return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&tcp_handler::handle_connections, ac_->http_ioc_.get())));
 }
 
@@ -122,7 +120,6 @@ void tcp_handler::do_read(int const client_socket)
     input_data += inbuffer[i];
   }
   input_data += '\n'; //add end of line for getline
-  std::cout << "socket " << client_socket << " read data" << std::endl;
   return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->http_ioc_->req_.get(), client_socket, std::move(input_data))));
 }
 
@@ -139,7 +136,6 @@ void tcp_handler::do_write(int const client_socket, std::string output_data, boo
     //websocket connection for now
     ac_->ws_ioc_->register_socket(client_socket);
   }
-  std::cout << "socket " << client_socket << " write close" << std::endl;
   return;
 }
 
@@ -172,13 +168,11 @@ void websocket_handler::register_socket(int const client_socket)
     //return 1;
   }
   return;
-  //return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
 }
 
 void websocket_handler::handle_connections()
 {
   std::lock_guard<std::mutex> guard(socket_state_mutex_);
-    //std::cout << "handling ws connections\n";
   int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, 10);
   if (nevents == -1) {
     //perror("epoll_wait()");
@@ -214,7 +208,7 @@ void websocket_handler::do_read(int const client_socket)
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      //std::cout << "finished reading data from client\n";
+      //read block so finished reading data from client
       input_websocket_frame_in_bits = broadcast_fd_list[client_socket].second;
       return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->ws_ioc_->req_.get(), client_socket, std::move(input_websocket_frame_in_bits))));
     }
@@ -229,13 +223,13 @@ void websocket_handler::do_read(int const client_socket)
   }
   else
   {
-    //std::cout << "read " << bytes_read << " bytes \n";
     for (int i = 0; i < bytes_read; i++)
     {
       std::bitset<8> bb(inbuffer[i]);
       broadcast_fd_list[client_socket].second += bb.to_string();
     }
   }
+  //if the call hasnt block more data is available add a read to the queue
   return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
 }
 

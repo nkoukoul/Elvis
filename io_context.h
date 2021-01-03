@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
 //
 // repository: https://github.com/nkoukoul/Elvis
 //
@@ -22,25 +22,28 @@
 
 class app;
 
-class io_context{
+class io_context
+{
 public:
   io_context() = default;
-  void run(app * ac);
+  void run(app *ac);
   virtual void handle_connections() = 0;
   virtual void do_read(int const client_socket) = 0;
   virtual void do_write(int const client_socket, std::string output_data, bool close_connection) = 0;
 };
 
-class tcp_handler: public io_context{
+class tcp_handler : public io_context
+{
 public:
-  tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac);  
+  tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac);
   void handle_connections() override;
   void do_read(int const client_socket) override;
   void do_write(int const client_socket, std::string output_data, bool close_connection) override;
-  
-  app * ac_;
+
+  app *ac_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
+
 private:
   std::string ipaddr_;
   int port_;
@@ -49,30 +52,30 @@ private:
 };
 
 //here will be used with the above tcp server so no need for listening to sockets
-class websocket_handler: public io_context{
+class websocket_handler : public io_context
+{
 public:
-  websocket_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app * ac);  
+  websocket_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac);
   void handle_connections() override;
   void do_read(int const client_socket) override;
   void do_write(int const client_socket, std::string output_data, bool close_connection) override;
   void register_socket(int const client_socket);
 
-  app * ac_;
+  app *ac_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
   std::vector<std::pair<int, std::string>> broadcast_fd_list;
+
 private:
   std::mutex socket_state_mutex_;
-  //std::unordered_map<int, std::string> socket_state_;
   int epoll_fd;
   struct epoll_event event;
-  struct epoll_event * events;
+  struct epoll_event *events;
   std::string ipaddr_;
   int port_;
   int server_sock_;
   static const int MAXBUF = 1024;
   static const int MAXEVENTS = 64;
 };
-
 
 #endif // IO_CONTEXT_H
