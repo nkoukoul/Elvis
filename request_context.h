@@ -50,7 +50,7 @@ public:
     request_ = std::move(request);
   }
   
-  void do_parse(int const client_socket, std::string && input_data) const{
+  void do_parse(int const client_socket, std::string input_data) const{
     return request_->parse(client_socket, std::move(input_data));
   }
 

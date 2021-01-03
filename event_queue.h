@@ -11,6 +11,7 @@
 #define EVENT_QUEUE_H
 
 #include <vector>
+#include <queue>
 #include <string>
 #include <memory>
 #include <mutex>
@@ -64,8 +65,8 @@ class event_queue: public i_event_queue{
 public:
   
   event_queue(int const capacity, app * ac):capacity_(capacity), ac_(ac){
-    e_q_.reserve(capacity_);
-    std::make_heap(e_q_.begin(),e_q_.end());
+    //e_q_.reserve(capacity_);
+    //std::make_heap(e_q_.begin(),e_q_.end());
   }
   //~event_queue();
   int size() const {return e_q_.size();}
@@ -76,9 +77,9 @@ public:
     std::lock_guard<std::mutex> guard(queue_lock_);
     D data;
     if (!empty()){
-      std::pop_heap(e_q_.begin(), e_q_.end());
-      data = e_q_.back()->get_data<D>();
-      e_q_.pop_back();
+      //std::pop_heap(e_q_.begin(), e_q_.end());
+      data = e_q_.front()->get_data<D>();
+      e_q_.pop();
     }
     return data;
   }
@@ -87,16 +88,15 @@ public:
     std::lock_guard<std::mutex> guard(queue_lock_);
     if (e_q_.size()>capacity_)
       return;  
-    e_q_.emplace_back(std::make_unique<event<D>>(100, std::move(data)));
-    std::push_heap(e_q_.begin(),e_q_.end());
+    e_q_.emplace(std::make_unique<event<D>>(100, std::move(data)));
+    //std::push_heap(e_q_.begin(),e_q_.end());
     return;
   }
   
 private:
   app * ac_;
   std::mutex queue_lock_;
-  //int get_priority(std::string const action) const;
-  std::vector<std::unique_ptr<base_event>> e_q_;
+  std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
 };
 

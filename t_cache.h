@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md) 
 // 
