@@ -51,7 +51,8 @@ void http_request_parser::parse(int const client_socket, std::string &&input_dat
     deserialized_input_data.insert(std::make_pair("data", std::move(deserialized_data)));
   }
 
-  return application_context_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_response_context::do_create_response, application_context_->http_ioc_->res_.get(), client_socket, std::move(deserialized_input_data))));
+  application_context_->http_ioc_->res_->do_create_response(client_socket, std::move(deserialized_input_data));
+  return;
 }
 
 websocket_request_parser::websocket_request_parser(app *application_context) : application_context_(application_context) {}
@@ -94,5 +95,6 @@ void websocket_request_parser::parse(int const client_socket, std::string &&inpu
   }
   //echo functinality for now
   std::unordered_map<std::string, std::string> deserialized_input_data({{"data", unmasked_payload_data}, {"Connection", connection}});
-  return application_context_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_response_context::do_create_response, application_context_->ws_ioc_->res_.get(), client_socket, std::move(deserialized_input_data))));
+  application_context_->ws_ioc_->res_->do_create_response(client_socket, std::move(deserialized_input_data));
+  return;
 }

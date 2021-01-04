@@ -39,23 +39,25 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
 
 void app::run(int thread_number)
 {
-  if (e_q_ && http_ioc_)
+  if (http_ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
     for (auto i = thread_number - 1; i > 0; --i)
     {
       thread_pool_.emplace_back(
           [&http_ioc = (this->http_ioc_)] {
-            //e_q->produce_event<std::function<void()>>(std::move(std::bind(&io_context::run, http_ioc.get())));
-            http_ioc->run(app_instance_);
+            http_ioc->run();
           });
     }
-    e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::handle_connections, http_ioc_.get())));
     if (ws_ioc_)
     {
-      e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::handle_connections, ws_ioc_.get())));
+      ws_ioc_->run();
     }
-    http_ioc_->run(app_instance_);
+    else
+    {      
+      http_ioc_->run();
+    }
+    
   }
   // Block until all the threads exit
   for (auto &t : thread_pool_)
