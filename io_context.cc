@@ -37,22 +37,6 @@ void non_block_socket(int sd)
   }
 }
 
-void io_context::run(app * ac)
-{
-  while (true)
-  {
-    auto async_func = ac->e_q_->consume_event<std::function<void()>>();
-    try
-    {
-      async_func();
-    }
-    catch (const std::bad_function_call &e)
-    {
-      ;
-    }
-  }
-}
-
 tcp_handler::tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac) : ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
 {
   struct sockaddr_in server;
@@ -72,27 +56,38 @@ tcp_handler::tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request
   listen(server_sock_, 5);
 }
 
+void tcp_handler::run()
+{
+  handle_connections();  
+}
+
 void tcp_handler::handle_connections()
 {
-  struct sockaddr_in client;
-  socklen_t client_len;
+  while (true){
+    struct sockaddr_in client;
+    socklen_t client_len;
 
-  client_len = sizeof client;
-  int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
-  if (client_socket < 0)
-  {
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    client_len = sizeof client;
+    int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
+    if (client_socket < 0)
     {
-      ;;//no incoming connection for non-blocking sockets
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+      {
+        ;
+        ; //no incoming connection for non-blocking sockets
+      }
+      else
+      {
+        std::cout << "Error while accepting connection";
+        break;
+      }
     }
     else
     {
-      std::cout << "Error while accepting connection";
+      do_read(client_socket);
     }
-  } else {
-    ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_read, ac_->http_ioc_.get(), client_socket)));
   }
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&tcp_handler::handle_connections, ac_->http_ioc_.get())));
+  return;
 }
 
 void tcp_handler::do_read(int const client_socket)
@@ -104,15 +99,16 @@ void tcp_handler::do_read(int const client_socket)
   int bytes_read = read(client_socket, inbuffer, MAXBUF);
   if (bytes_read <= 0)
   {
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
+    //if (errno == EAGAIN || errno == EWOULDBLOCK)
+    //{
       //client block
-      ;;
-    } else {
-      //client closed connection
-      close(client_socket);
-      return;
-    }
+    //}
+    //else
+    //{
+    //error or client closed connection
+    close(client_socket);
+    return;
+    //}
   }
 
   for (int i = 0; i < bytes_read; i++)
@@ -120,7 +116,8 @@ void tcp_handler::do_read(int const client_socket)
     input_data += inbuffer[i];
   }
   input_data += '\n'; //add end of line for getline
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->http_ioc_->req_.get(), client_socket, std::move(input_data))));
+  req_->do_parse(client_socket, std::move(input_data));
+  return;
 }
 
 void tcp_handler::do_write(int const client_socket, std::string output_data, bool close_connection)
@@ -142,7 +139,7 @@ void tcp_handler::do_write(int const client_socket, std::string output_data, boo
 websocket_handler::websocket_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac) : ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
 {
   std::signal(SIGPIPE, SIG_IGN);
-  broadcast_fd_list.resize(256, {0, ""});
+  broadcast_fd_list.resize(256, 0);
   epoll_fd = epoll_create1(0);
   if (epoll_fd == -1)
   {
@@ -158,7 +155,7 @@ void websocket_handler::register_socket(int const client_socket)
   std::lock_guard<std::mutex> guard(socket_state_mutex_);
   if (client_socket > 255)
     return;
-  broadcast_fd_list[client_socket].first = client_socket;
+  broadcast_fd_list[client_socket]= client_socket;
   non_block_socket(client_socket);
   event.data.fd = client_socket;
   event.events = EPOLLIN | EPOLLET;
@@ -170,67 +167,80 @@ void websocket_handler::register_socket(int const client_socket)
   return;
 }
 
+void websocket_handler::run()
+{
+  handle_connections();
+}
+
 void websocket_handler::handle_connections()
 {
-  std::lock_guard<std::mutex> guard(socket_state_mutex_);
-  int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, 10);
-  if (nevents == -1) {
-    //perror("epoll_wait()");
-    //return 1;
-  }
-  for (int i = 0; i < nevents; i++)
+  while (true)
   {
-    if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP))
+    int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, 10);
+    if (nevents == -1)
     {
-      // error case
-      fprintf(stderr, "epoll error\n");
-      close(events[i].data.fd);
-      broadcast_fd_list[events[i].data.fd].first = 0;
-      continue;
+      //perror("epoll_wait()");
+      //return 1;
     }
-    else if (events[i].events & EPOLLIN)
+    std::lock_guard<std::mutex> guard(socket_state_mutex_);
+    for (int i = 0; i < nevents; i++)
     {
-      int client_socket = events[i].data.fd;
-      broadcast_fd_list[client_socket].second.clear();
-      ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
+      if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP))
+      {
+        // error case
+        fprintf(stderr, "epoll error\n");
+        close(events[i].data.fd);
+        broadcast_fd_list[events[i].data.fd] = 0;
+        continue;
+      }
+      else if (events[i].events & EPOLLIN)
+      {
+        int client_socket = events[i].data.fd;
+        do_read(client_socket);
+      }
     }
   }
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::handle_connections, ac_->ws_ioc_.get())));
+  return;
 }
 
 void websocket_handler::do_read(int const client_socket)
 {
   char inbuffer[MAXBUF];
   std::string input_websocket_frame_in_bits;
-  // Read data from client
-  int bytes_read = read(client_socket, inbuffer, MAXBUF);
-  if (bytes_read <= 0)
+  while (true)
   {
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    // Read data from client
+    int bytes_read = read(client_socket, inbuffer, MAXBUF);
+    if (bytes_read <= 0)
     {
-      //read block so finished reading data from client
-      input_websocket_frame_in_bits = broadcast_fd_list[client_socket].second;
-      return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->ws_ioc_->req_.get(), client_socket, std::move(input_websocket_frame_in_bits))));
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+      {
+        //read block so finished reading data from client
+        break;
+      }
+      else
+      {
+        //perror("read()");
+        std::cout << "ws client disconnected or error\n";
+        close(client_socket);
+        broadcast_fd_list[client_socket] = 0;
+        return;
+      }
     }
     else
     {
-      //perror("read()");
-      std::cout << "ws client disconnected or error\n";
-      close(client_socket);
-      broadcast_fd_list[client_socket].first = 0;
-      return;
+      for (int i = 0; i < bytes_read; i++)
+      {
+        std::bitset<8> bb(inbuffer[i]);
+        input_websocket_frame_in_bits += bb.to_string();
+      }
     }
   }
-  else
+  if (!input_websocket_frame_in_bits.empty())
   {
-    for (int i = 0; i < bytes_read; i++)
-    {
-      std::bitset<8> bb(inbuffer[i]);
-      broadcast_fd_list[client_socket].second += bb.to_string();
-    }
+    req_->do_parse(client_socket, std::move(input_websocket_frame_in_bits));
   }
-  //if the call hasnt block more data is available add a read to the queue
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
+  return;
 }
 
 void websocket_handler::do_write(int const client_socket, std::string output_data, bool close_connection)
@@ -239,7 +249,7 @@ void websocket_handler::do_write(int const client_socket, std::string output_dat
   {
     std::cout << "error during write\n";
     close(client_socket);
-    broadcast_fd_list[client_socket].first = 0;
+    broadcast_fd_list[client_socket] = 0;
   }
   return;
 }

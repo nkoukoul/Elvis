@@ -28,9 +28,6 @@ int main(int argc, char * argv[])
   //Here we create an event queue
   std::unique_ptr<event_queue<std::function<void()>>> e_q = std::make_unique<event_queue<std::function<void()>>>(4000, my_app);
 
-  //Here we create a cache
-  std::unique_ptr<t_cache<std::string, std::string>> app_cache = std::make_unique<t_cache<std::string, std::string>>(5);
-
   //Here we create a tcp server and inject it with an http request/response context
   std::unique_ptr<tcp_handler> http_server = std::make_unique<tcp_handler>
     (ipaddr, port, std::move(std::make_unique<http_request_context>(my_app)), std::move(std::make_unique<http_response_context>(my_app)), my_app);
@@ -51,8 +48,7 @@ int main(int argc, char * argv[])
 		    std::move(std::make_unique<json_util_context>()),
 		    std::move(std::make_unique<utils>()),  
 		    std::move(rm),
-		    std::move(e_q),
-		    std::move(app_cache));
+		    std::move(e_q));
   
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 
