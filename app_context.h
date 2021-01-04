@@ -37,8 +37,7 @@ public:
 		 std::unique_ptr<i_json_util_context> juc = nullptr,
 		 std::unique_ptr<utils> uc = nullptr, 
 		 std::unique_ptr<route_manager> rm = nullptr,
-		 std::unique_ptr<i_event_queue> e_q = nullptr,
-		 std::unique_ptr<i_cache> app_cache = nullptr);
+		 std::unique_ptr<i_event_queue> e_q = nullptr);
   
   void run(int thread_number);
 
@@ -48,7 +47,7 @@ public:
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_event_queue> e_q_;
-  std::unique_ptr<i_cache> app_cache_;
+  std::unordered_map<std::thread::id, std::unique_ptr<i_cache>> app_cache_pool;
   static std::mutex app_mutex_;
 protected:
   app() = default;
