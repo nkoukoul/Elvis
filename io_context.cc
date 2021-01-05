@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
 //
 // repository: https://github.com/nkoukoul/Elvis
 //
@@ -37,28 +37,37 @@ void non_block_socket(int sd)
   }
 }
 
-void io_context::run(app * ac)
+void io_context::run(app *ac, std::shared_ptr<i_event_queue> executor)
 {
+  executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &tcp_handler::handle_connections,
+              ac->http_ioc_.get(),
+              executor)));
+
   while (true)
   {
-    auto async_func = ac->e_q_->consume_event<std::function<void()>>();
-    try
+    if (!executor->empty())
     {
+      auto s = executor->size();
+      auto async_func = executor->consume_event<std::function<void()>>();
       async_func();
-    }
-    catch (const std::bad_function_call &e)
-    {
-      ;
     }
   }
 }
 
-tcp_handler::tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac) : ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
+tcp_handler::tcp_handler(
+    std::string ipaddr,
+    int port,
+    std::unique_ptr<i_request_context> req,
+    std::unique_ptr<i_response_context> res,
+    app *ac) : ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
 {
   struct sockaddr_in server;
 
   server_sock_ = socket(AF_INET, SOCK_STREAM, PF_UNSPEC);
-  //non_block_socket(server_sock_);
+  non_block_socket(server_sock_);
   server.sin_family = AF_INET;
   server.sin_addr.s_addr = inet_addr(ipaddr_.c_str());
   server.sin_port = htons(port_);
@@ -72,7 +81,7 @@ tcp_handler::tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request
   listen(server_sock_, 5);
 }
 
-void tcp_handler::handle_connections()
+void tcp_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
 {
   struct sockaddr_in client;
   socklen_t client_len;
@@ -83,19 +92,34 @@ void tcp_handler::handle_connections()
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      ;;//no incoming connection for non-blocking sockets
+      ;
+      ; //no incoming connection for non-blocking sockets
     }
     else
     {
       std::cout << "Error while accepting connection";
     }
-  } else {
-    ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_read, ac_->http_ioc_.get(), client_socket)));
   }
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&tcp_handler::handle_connections, ac_->http_ioc_.get())));
+  else
+  {
+    non_block_socket(client_socket);
+    executor->produce_event<std::function<void()>>(
+        std::move(
+            std::bind(
+                &io_context::do_read,
+                ac_->http_ioc_.get(),
+                client_socket,
+                executor)));
+  }
+  executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &tcp_handler::handle_connections,
+              ac_->http_ioc_.get(),
+              executor)));
 }
 
-void tcp_handler::do_read(int const client_socket)
+void tcp_handler::do_read(int const client_socket, std::shared_ptr<i_event_queue> executor)
 {
   std::string input_data;
   char inbuffer[MAXBUF], *p = inbuffer;
@@ -106,24 +130,46 @@ void tcp_handler::do_read(int const client_socket)
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      //client block
-      ;;
-    } else {
+      //client read block try again
+      executor->produce_event<std::function<void()>>(
+          std::move(
+              std::bind(
+                  &io_context::do_read,
+                  ac_->http_ioc_.get(),
+                  client_socket,
+                  executor)));
+      return;
+    }
+    else
+    {
       //client closed connection
       close(client_socket);
       return;
     }
   }
-
-  for (int i = 0; i < bytes_read; i++)
+  else
   {
-    input_data += inbuffer[i];
+    for (int i = 0; i < bytes_read; i++)
+    {
+      input_data += inbuffer[i];
+    }
+    input_data += '\n'; //add end of line for getline
+    executor->produce_event<std::function<void()>>(
+        std::move(
+            std::bind(
+                &i_request_context::do_parse,
+                ac_->http_ioc_->req_.get(),
+                client_socket,
+                std::move(input_data),
+                executor)));
   }
-  input_data += '\n'; //add end of line for getline
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->http_ioc_->req_.get(), client_socket, std::move(input_data))));
 }
 
-void tcp_handler::do_write(int const client_socket, std::string output_data, bool close_connection)
+void tcp_handler::do_write(
+    int const client_socket,
+    std::string output_data,
+    bool close_connection,
+    std::shared_ptr<i_event_queue> executor)
 {
   write(client_socket, output_data.c_str(), output_data.size());
   //close socket if http
@@ -134,7 +180,7 @@ void tcp_handler::do_write(int const client_socket, std::string output_data, boo
   else
   {
     //websocket connection for now
-    ac_->ws_ioc_->register_socket(client_socket);
+    ac_->ws_ioc_->register_socket(client_socket, executor);
   }
   return;
 }
@@ -143,38 +189,45 @@ websocket_handler::websocket_handler(std::string ipaddr, int port, std::unique_p
 {
   std::signal(SIGPIPE, SIG_IGN);
   broadcast_fd_list.resize(256, {0, ""});
-  epoll_fd = epoll_create1(0);
-  if (epoll_fd == -1)
-  {
-    //perror("epoll_create1()");
-    //exit;
-  }
-  memset(&event, 0, sizeof(event));
-  events = (struct epoll_event *)calloc(MAXEVENTS, sizeof(struct epoll_event));
+  //epoll_fd = epoll_create1(0);
+  //if (epoll_fd == -1)
+  //{
+  //perror("epoll_create1()");
+  //exit;
+  //}
+  //memset(&event, 0, sizeof(event));
+  //events = (struct epoll_event *)calloc(MAXEVENTS, sizeof(struct epoll_event));
 }
 
-void websocket_handler::register_socket(int const client_socket)
+void websocket_handler::register_socket(int const client_socket, std::shared_ptr<i_event_queue> executor)
 {
-  std::lock_guard<std::mutex> guard(socket_state_mutex_);
+  //std::lock_guard<std::mutex> guard(socket_state_mutex_);
   if (client_socket > 255)
     return;
   broadcast_fd_list[client_socket].first = client_socket;
   non_block_socket(client_socket);
-  event.data.fd = client_socket;
-  event.events = EPOLLIN | EPOLLET;
-  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_socket, &event) == -1)
-  {
-    //perror("epoll_ctl()");
-    //return 1;
-  }
-  return;
+  //event.data.fd = client_socket;
+  //event.events = EPOLLIN | EPOLLET;
+  //if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_socket, &event) == -1)
+  //{
+  //perror("epoll_ctl()");
+  //return 1;
+  //}
+  executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &websocket_handler::do_read,
+              ac_->ws_ioc_.get(),
+              client_socket,
+              executor)));
 }
 
-void websocket_handler::handle_connections()
+void websocket_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
 {
-  std::lock_guard<std::mutex> guard(socket_state_mutex_);
+  /*   std::lock_guard<std::mutex> guard(socket_state_mutex_);
   int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, 10);
-  if (nevents == -1) {
+  if (nevents == -1)
+  {
     //perror("epoll_wait()");
     //return 1;
   }
@@ -192,13 +245,13 @@ void websocket_handler::handle_connections()
     {
       int client_socket = events[i].data.fd;
       broadcast_fd_list[client_socket].second.clear();
-      ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
+      ac_->executor_pool_[std::this_thread::get_id()]->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
     }
   }
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::handle_connections, ac_->ws_ioc_.get())));
+  return ac_->executor_pool_[std::this_thread::get_id()]->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::handle_connections, ac_->ws_ioc_.get()))); */
 }
 
-void websocket_handler::do_read(int const client_socket)
+void websocket_handler::do_read(int const client_socket, std::shared_ptr<i_event_queue> executor)
 {
   char inbuffer[MAXBUF];
   std::string input_websocket_frame_in_bits;
@@ -208,9 +261,20 @@ void websocket_handler::do_read(int const client_socket)
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      //read block so finished reading data from client
-      input_websocket_frame_in_bits = broadcast_fd_list[client_socket].second;
-      return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&i_request_context::do_parse, ac_->ws_ioc_->req_.get(), client_socket, std::move(input_websocket_frame_in_bits))));
+      //read block so finished reading data from client. check if we actually read data
+      if (!broadcast_fd_list[client_socket].second.empty())
+      {
+        input_websocket_frame_in_bits = broadcast_fd_list[client_socket].second;
+        broadcast_fd_list[client_socket].second.clear();
+        executor->produce_event<std::function<void()>>(
+            std::move(
+                std::bind(
+                    &i_request_context::do_parse,
+                    ac_->ws_ioc_->req_.get(),
+                    client_socket,
+                    std::move(input_websocket_frame_in_bits),
+                    executor)));
+      }
     }
     else
     {
@@ -229,11 +293,21 @@ void websocket_handler::do_read(int const client_socket)
       broadcast_fd_list[client_socket].second += bb.to_string();
     }
   }
-  //if the call hasnt block more data is available add a read to the queue
-  return ac_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
+  //add another read job to the queue
+  executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &websocket_handler::do_read,
+              ac_->ws_ioc_.get(),
+              client_socket,
+              executor)));
 }
 
-void websocket_handler::do_write(int const client_socket, std::string output_data, bool close_connection)
+void websocket_handler::do_write(
+    int const client_socket,
+    std::string output_data,
+    bool close_connection,
+    std::shared_ptr<i_event_queue> executor)
 {
   if (write(client_socket, output_data.c_str(), output_data.size()) < 0 || close_connection)
   {

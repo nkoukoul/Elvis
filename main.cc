@@ -24,12 +24,6 @@ int main(int argc, char * argv[])
   int port = std::stoi(argv[2]);
   int thread_number = std::max<int>(1,std::stoi(argv[3]));
   app * my_app = app::get_instance();
-  
-  //Here we create an event queue
-  std::unique_ptr<event_queue<std::function<void()>>> e_q = std::make_unique<event_queue<std::function<void()>>>(4000, my_app);
-
-  //Here we create a cache
-  std::unique_ptr<t_cache<std::string, std::string>> app_cache = std::make_unique<t_cache<std::string, std::string>>(5);
 
   //Here we create a tcp server and inject it with an http request/response context
   std::unique_ptr<tcp_handler> http_server = std::make_unique<tcp_handler>
@@ -45,14 +39,12 @@ int main(int argc, char * argv[])
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
   rm->set_route("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
 
-  //Application context is injected with the tcp_server, the websocket handler, the utils the route manager the event queue and the cache
+  //Application context is injected with the tcp_server, the websocket handler, the utils the route manager
   my_app->configure(std::move(http_server),
 		    std::move(ws), 
 		    std::move(std::make_unique<json_util_context>()),
 		    std::move(std::make_unique<utils>()),  
-		    std::move(rm),
-		    std::move(e_q),
-		    std::move(app_cache));
+		    std::move(rm));
   
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 

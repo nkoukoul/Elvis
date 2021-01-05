@@ -1,11 +1,10 @@
 //
 // Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
-
 
 #ifndef T_CACHE_H
 #define T_CACHE_H
@@ -16,91 +15,108 @@
 #include <vector>
 #include <chrono>
 #include <unordered_map>
-#include <mutex>
 
-class i_cache{
+class i_cache
+{
 public:
   virtual ~i_cache(){};
-  template<class K, class V, class U, class X> void insert(std::pair<U,X> && k_v_pair);
-  template<class K, class V> bool find(K const key);
-  template<class K, class V> std::pair<K,V> operator [](K const key);
+  template <class K, class V, class U, class X>
+  void insert(std::pair<U, X> &&k_v_pair);
+  template <class K, class V>
+  bool find(K const key);
+  template <class K, class V>
+  std::pair<K, V> operator[](K const key);
   virtual void state(){};
 };
 
-template<class K, class V>
-class t_cache: public i_cache{
+template <class K, class V>
+class t_cache : public i_cache
+{
 public:
-  t_cache(int capacity):capacity_(capacity){};
-    
-  void insert(std::pair<K,V> && k_v_pair){
-    std::lock_guard<std::mutex> guard(cache_lock_);
+  t_cache(int capacity) : capacity_(capacity){};
+
+  void insert(std::pair<K, V> &&k_v_pair)
+  {
     std::chrono::steady_clock::time_point insertion_time = std::chrono::steady_clock::now();
-    if (cache_index_.find(k_v_pair.first) == cache_index_.end()){
+    if (cache_index_.find(k_v_pair.first) == cache_index_.end())
+    {
       cache_.push_back(std::make_pair(insertion_time, k_v_pair));
-      cache_index_.insert(std::make_pair(k_v_pair.first, cache_.size()-1));
-    } else {
+      cache_index_.insert(std::make_pair(k_v_pair.first, cache_.size() - 1));
+    }
+    else
+    {
       cache_[cache_index_[k_v_pair.first]].first = insertion_time;
     }
-    
-    if (cache_.size() > capacity_){
+
+    if (cache_.size() > capacity_)
+    {
       //O(nlog(n))
-      std::sort(cache_.begin(), cache_.end(), std::greater <>());
+      std::sort(cache_.begin(), cache_.end(), std::greater<>());
       //O(n)
-      for (int i = 0; i < cache_.size(); i++){
-	cache_index_[cache_[i].second.first] = i;
+      for (int i = 0; i < cache_.size(); i++)
+      {
+        cache_index_[cache_[i].second.first] = i;
       }
-      K key_to_be_removed = cache_[cache_.size()-1].second.first;
+      K key_to_be_removed = cache_[cache_.size() - 1].second.first;
       cache_index_.erase(key_to_be_removed);
       cache_.pop_back();
     }
     return;
   }
 
-  bool find(K const key){
-    std::lock_guard<std::mutex> guard(cache_lock_);
+  bool find(K const key)
+  {
     return cache_index_.find(key) != cache_index_.end();
   }
-  
-  std::pair<K,V> operator [](K const key) {
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    if (cache_index_.find(key) == cache_index_.end()) return {}; 
+
+  std::pair<K, V> operator[](K const key)
+  {
+    if (cache_index_.find(key) == cache_index_.end())
+      return {};
     return cache_[cache_index_[key]].second;
   }
 
-  void state(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
+  void state()
+  {
     auto end = std::chrono::steady_clock::now();
-    for (auto it = cache_.begin(); it != cache_.end(); ++it){
+    for (auto it = cache_.begin(); it != cache_.end(); ++it)
+    {
       std::cout << "entry inserted before: " << std::chrono::duration_cast<std::chrono::seconds>(end - it->first).count() << " seconds key: " << it->second.first << " value: " << it->second.second << "\n";
     }
   }
 
 private:
   int capacity_;
-  std::mutex cache_lock_;
   std::vector<std::pair<std::chrono::steady_clock::time_point, std::pair<K, V>>> cache_;
   std::unordered_map<K, int> cache_index_;
 
-  bool empty() const {
+  bool empty() const
+  {
     return cache_.empty();
   }
-  
-  int size() const {
+
+  int size() const
+  {
     return cache_.size();
   }
-
 };
 
-template<class K, class V, class U, class X> void i_cache::insert(std::pair<U,X> && k_v_pair){
-  return dynamic_cast<t_cache<K,V>&>(*this).insert(std::move(k_v_pair));
+template <class K, class V, class U, class X>
+void i_cache::insert(std::pair<U, X> &&k_v_pair)
+{
+  return dynamic_cast<t_cache<K, V> &>(*this).insert(std::move(k_v_pair));
 }
 
-template<class K, class V> bool i_cache::find(K const key){
-  return dynamic_cast<t_cache<K,V>&>(*this).find(key);
+template <class K, class V>
+bool i_cache::find(K const key)
+{
+  return dynamic_cast<t_cache<K, V> &>(*this).find(key);
 }
 
-template<class K, class V> std::pair<K,V> i_cache::operator [](K const key){
-  return dynamic_cast<t_cache<K,V>&>(*this)[key];
+template <class K, class V>
+std::pair<K, V> i_cache::operator[](K const key)
+{
+  return dynamic_cast<t_cache<K, V> &>(*this)[key];
 }
 
 #endif //T_CACHE_H

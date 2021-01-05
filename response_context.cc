@@ -11,7 +11,10 @@
 
 http_response_creator::http_response_creator(app *application_context) : application_context_(application_context) {}
 
-void http_response_creator::create_response(int const client_socket, std::unordered_map<std::string, std::string> &&deserialized_input_data) const
+void http_response_creator::create_response(
+    int const client_socket,
+    std::unordered_map<std::string, std::string> &&deserialized_input_data,
+    std::shared_ptr<i_event_queue> executor) const
 {
 
   std::string status;
@@ -29,8 +32,8 @@ void http_response_creator::create_response(int const client_socket, std::unorde
   else
   {
     //http connection
-    i_controller *ic = application_context_->rm_->get_controller(deserialized_input_data["url"], deserialized_input_data["request_type"]);
-
+    //i_controller *ic = application_context_->rm_->get_controller(deserialized_input_data["url"], deserialized_input_data["request_type"]);
+    auto ic = std::make_unique<file_get_controller>();
     if (ic)
     {
       status = "200 OK";
@@ -72,12 +75,23 @@ void http_response_creator::create_response(int const client_socket, std::unorde
   if (!controller_data.empty())
     response += controller_data + "\r\n";
 
-  return application_context_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_write, application_context_->http_ioc_.get(), client_socket, std::move(response), close_connection)));
+  executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &io_context::do_write,
+              application_context_->http_ioc_.get(),
+              client_socket,
+              std::move(response),
+              close_connection,
+              executor)));
 }
 
 websocket_response_creator::websocket_response_creator(app *application_context) : application_context_(application_context) {}
 
-void websocket_response_creator::create_response(int const client_socket, std::unordered_map<std::string, std::string> &&deserialized_input_data) const
+void websocket_response_creator::create_response(
+    int const client_socket,
+    std::unordered_map<std::string, std::string> &&deserialized_input_data,
+    std::shared_ptr<i_event_queue> executor) const
 {
   bool close_connection = false;
   std::bitset<4> b_opcode;
@@ -143,5 +157,13 @@ void websocket_response_creator::create_response(int const client_socket, std::u
   response += first_part & 0x000000ff;        //LSB
   response += extra_len;
   response += deserialized_input_data["data"];
-  return application_context_->e_q_->produce_event<std::function<void()>>(std::move(std::bind(&io_context::do_write, application_context_->ws_ioc_.get(), client_socket, std::move(response), close_connection)));
+  executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &io_context::do_write,
+              application_context_->ws_ioc_.get(),
+              client_socket,
+              std::move(response),
+              close_connection,
+              executor)));
 }

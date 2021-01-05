@@ -1,8 +1,8 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
 
@@ -13,63 +13,85 @@
 #include <memory>
 #include <unordered_map>
 #include <bitset>
+#include "event_queue.h"
 
 class app;
 
-class response_creator{
+class response_creator
+{
 public:
   response_creator() = default;
 
-  virtual void create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const = 0;
-
+  virtual void create_response(
+      int const client_socket,
+      std::unordered_map<std::string, std::string> &&deserialized_input_data,
+      std::shared_ptr<i_event_queue> executor) const = 0;
 };
 
-class http_response_creator: public response_creator{
+class http_response_creator : public response_creator
+{
 public:
-  http_response_creator(app * application_context = nullptr);
+  http_response_creator(app *application_context = nullptr);
 
-  void create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const override;
+  void create_response(
+      int const client_socket,
+      std::unordered_map<std::string, std::string> &&deserialized_input_data,
+      std::shared_ptr<i_event_queue> executor) const override;
 
 private:
-  app * application_context_;
+  app *application_context_;
 };
 
-class websocket_response_creator: public response_creator{
+class websocket_response_creator : public response_creator
+{
 public:
-  websocket_response_creator(app * application_context = nullptr);
+  websocket_response_creator(app *application_context = nullptr);
 
-  void create_response(int const client_socket, std::unordered_map<std::string, std::string> && deserialized_input_data) const override;
+  void create_response(
+      int const client_socket,
+      std::unordered_map<std::string, std::string> &&deserialized_input_data,
+      std::shared_ptr<i_event_queue> executor) const override;
 
 private:
-  app * application_context_;
+  app *application_context_;
 };
 
-class i_response_context{
+class i_response_context
+{
 public:
   i_response_context() = default;
-  
-  void set_response_context(std::unique_ptr<response_creator> response){
+
+  void set_response_context(std::unique_ptr<response_creator> response)
+  {
     response_ = std::move(response);
   }
-  
-  void do_create_response(int const client_socket, std::unordered_map<std::string, std::string> deserialized_input_data) const {
-    return response_->create_response(client_socket, std::move(deserialized_input_data));
+
+  void do_create_response(
+      int const client_socket,
+      std::unordered_map<std::string, std::string> deserialized_input_data,
+      std::shared_ptr<i_event_queue> executor) const
+  {
+    return response_->create_response(client_socket, std::move(deserialized_input_data), executor);
   }
 
 protected:
   std::unique_ptr<response_creator> response_;
 };
 
-class http_response_context: public i_response_context{
+class http_response_context : public i_response_context
+{
 public:
-  http_response_context(app * application_context = nullptr){
+  http_response_context(app *application_context = nullptr)
+  {
     this->response_ = std::make_unique<http_response_creator>(application_context); //default for now
   }
 };
 
-class websocket_response_context: public i_response_context{
+class websocket_response_context : public i_response_context
+{
 public:
-  websocket_response_context(app * application_context = nullptr){
+  websocket_response_context(app *application_context = nullptr)
+  {
     this->response_ = std::make_unique<websocket_response_creator>(application_context); //default for now
   }
 };
