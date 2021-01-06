@@ -180,7 +180,13 @@ void tcp_handler::do_write(
   else
   {
     //websocket connection for now
-    ac_->ws_ioc_->register_socket(client_socket, executor);
+    executor->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &websocket_handler::register_socket,
+              ac_->ws_ioc_.get(),
+              client_socket,
+              executor)));
   }
   return;
 }
@@ -189,30 +195,14 @@ websocket_handler::websocket_handler(std::string ipaddr, int port, std::unique_p
 {
   std::signal(SIGPIPE, SIG_IGN);
   broadcast_fd_list.resize(256, {0, ""});
-  //epoll_fd = epoll_create1(0);
-  //if (epoll_fd == -1)
-  //{
-  //perror("epoll_create1()");
-  //exit;
-  //}
-  //memset(&event, 0, sizeof(event));
-  //events = (struct epoll_event *)calloc(MAXEVENTS, sizeof(struct epoll_event));
 }
 
 void websocket_handler::register_socket(int const client_socket, std::shared_ptr<i_event_queue> executor)
 {
-  //std::lock_guard<std::mutex> guard(socket_state_mutex_);
   if (client_socket > 255)
     return;
   broadcast_fd_list[client_socket].first = client_socket;
   non_block_socket(client_socket);
-  //event.data.fd = client_socket;
-  //event.events = EPOLLIN | EPOLLET;
-  //if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_socket, &event) == -1)
-  //{
-  //perror("epoll_ctl()");
-  //return 1;
-  //}
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
@@ -224,31 +214,7 @@ void websocket_handler::register_socket(int const client_socket, std::shared_ptr
 
 void websocket_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
 {
-  /*   std::lock_guard<std::mutex> guard(socket_state_mutex_);
-  int nevents = epoll_wait(epoll_fd, events, MAXEVENTS, 10);
-  if (nevents == -1)
-  {
-    //perror("epoll_wait()");
-    //return 1;
-  }
-  for (int i = 0; i < nevents; i++)
-  {
-    if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP))
-    {
-      // error case
-      fprintf(stderr, "epoll error\n");
-      close(events[i].data.fd);
-      broadcast_fd_list[events[i].data.fd].first = 0;
-      continue;
-    }
-    else if (events[i].events & EPOLLIN)
-    {
-      int client_socket = events[i].data.fd;
-      broadcast_fd_list[client_socket].second.clear();
-      ac_->executor_pool_[std::this_thread::get_id()]->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::do_read, ac_->ws_ioc_.get(), client_socket)));
-    }
-  }
-  return ac_->executor_pool_[std::this_thread::get_id()]->produce_event<std::function<void()>>(std::move(std::bind(&websocket_handler::handle_connections, ac_->ws_ioc_.get()))); */
+
 }
 
 void websocket_handler::do_read(int const client_socket, std::shared_ptr<i_event_queue> executor)
@@ -278,7 +244,6 @@ void websocket_handler::do_read(int const client_socket, std::shared_ptr<i_event
     }
     else
     {
-      //perror("read()");
       std::cout << "ws client disconnected or error\n";
       close(client_socket);
       broadcast_fd_list[client_socket].first = 0;

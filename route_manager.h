@@ -23,7 +23,7 @@ public:
 
   i_controller *get_controller(std::string url, std::string request_type)
   {
-    std::lock_guard<std::mutex> guard(route_manager_lock_);
+    //std::lock_guard<std::mutex> guard(route_manager_lock_);
     if (get_route(url, request_type))
     {
       return route_map[url][request_type].get();

@@ -54,14 +54,38 @@ void http_request_parser::parse(
     deserialized_input_data.insert(std::make_pair("data", std::move(deserialized_data)));
   }
 
-  executor->produce_event<std::function<void()>>(
+  i_controller *ic = application_context_->rm_->get_controller(
+      deserialized_input_data["url"],
+      deserialized_input_data["request_type"]);
+  
+  if (ic)
+  {
+    deserialized_input_data["status"] = "200 OK";
+    deserialized_input_data["controller_data"] = "";
+    executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
-              &i_response_context::do_create_response,
-              application_context_->http_ioc_->res_.get(),
-              client_socket,
+              &i_controller::run,
+              ic,
               std::move(deserialized_input_data),
-              executor)));
+              client_socket,
+              application_context_,
+              executor)));  
+  }
+  else
+  {
+    deserialized_input_data["status"] = "400 Bad Request";
+    deserialized_input_data["controller_data"] = "Url or method not supported";
+    
+    executor->produce_event<std::function<void()>>(
+        std::move(
+            std::bind(
+                &i_response_context::do_create_response,
+                application_context_->http_ioc_->res_.get(),
+                client_socket,
+                std::move(deserialized_input_data),
+                executor)));
+  }
 }
 
 websocket_request_parser::websocket_request_parser(app *application_context) : application_context_(application_context) {}

@@ -1,8 +1,8 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
 
@@ -12,31 +12,60 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
+#include <memory>
+#include "event_queue.h"
 
 class app;
 
-class i_controller{
+class i_controller
+{
 public:
   i_controller() = default;
-  virtual std::string run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac) = 0;
+  
+  void run(
+      std::unordered_map<std::string, std::string> deserialized_input_data,
+      int client_socket,
+      app *ac,
+      std::shared_ptr<i_event_queue> executor);
+
+  virtual void do_stuff(
+      std::unordered_map<std::string, std::string> &deserialized_input_data,
+      app *ac,
+      std::shared_ptr<i_event_queue> executor) = 0;
 };
 
-class file_get_controller: public i_controller{
+class file_get_controller : public i_controller
+{
 public:
   file_get_controller() = default;
-  std::string run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac) override;
+  
+  void do_stuff(
+      std::unordered_map<std::string, std::string> &deserialized_input_data,
+      app *ac,
+      std::shared_ptr<i_event_queue> executor) override;
+  
 };
 
-class file_post_controller: public i_controller{
+class file_post_controller : public i_controller
+{
 public:
   file_post_controller() = default;
-  std::string run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac) override;
+  
+  void do_stuff(
+      std::unordered_map<std::string, std::string> &deserialized_input_data,
+      app *ac,
+      std::shared_ptr<i_event_queue> executor) override;
+
 };
 
-class trigger_post_controller: public i_controller{
+class trigger_post_controller : public i_controller
+{
 public:
   trigger_post_controller() = default;
-  std::string run(std::unordered_map<std::string, std::string>  && deserialized_input_data, app * ac) override;
+  void do_stuff(
+      std::unordered_map<std::string, std::string> &deserialized_input_data,
+      app *ac,
+      std::shared_ptr<i_event_queue> executor) override;
 };
 
 #endif //CONTROLLERS_H

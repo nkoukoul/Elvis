@@ -40,12 +40,13 @@ public:
   
   void run(int thread_number);
 
+  void add_route(std::string key ,std::string value);
+  
   std::unique_ptr<tcp_handler> http_ioc_;
   std::unique_ptr<websocket_handler> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
-  std::unordered_map<std::thread::id, std::unique_ptr<i_cache>> app_cache_pool_;
   static std::mutex app_mutex_;
 protected:
   app() = default;
@@ -54,6 +55,7 @@ protected:
 private:
   static app * app_instance_;
   std::vector<std::thread> thread_pool_;
+  std::unordered_map<std::string, std::string> route_manager_table_;
 };
 
 #endif //APP_CONTEXT_H

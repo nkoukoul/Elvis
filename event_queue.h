@@ -15,6 +15,7 @@
 #include <memory>
 #include <iostream>
 #include <algorithm>
+#include "t_cache.h"
 
 class base_event
 {
@@ -67,18 +68,29 @@ public:
   void produce_event(U &&data);
   virtual bool empty() const = 0;
   virtual int size() const = 0;
+  virtual i_cache *get_executor_cache() = 0;
 };
 
 template <class D>
 class event_queue : public i_event_queue
 {
 public:
-  event_queue(int const capacity) : capacity_(capacity)
+  event_queue(
+      int const capacity,
+      std::unique_ptr<i_cache> executor_cache = nullptr)
+      : capacity_(capacity),
+        executor_cache_(std::move(executor_cache))
   {
     //e_q_.reserve(capacity_);
     //std::make_heap(e_q_.begin(),e_q_.end());
   }
   //~event_queue();
+
+  i_cache *get_executor_cache() override
+  {
+    return executor_cache_.get();
+  }
+
   int size() const { return e_q_.size(); }
 
   bool empty() const { return e_q_.empty(); }
@@ -98,13 +110,14 @@ public:
   void produce_event(D &&data)
   {
     //if (e_q_.size() > capacity_)
-      //return;
+    //return;
     e_q_.emplace(std::make_unique<event<D>>(100, std::move(data)));
     //std::push_heap(e_q_.begin(),e_q_.end());
     return;
   }
 
 private:
+  std::unique_ptr<i_cache> executor_cache_;
   std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
 };

@@ -34,12 +34,13 @@ int main(int argc, char * argv[])
     (ipaddr, port, std::move(std::make_unique<websocket_request_context>(my_app)), std::move(std::make_unique<websocket_response_context>(my_app)), my_app);
   
   //Route manager is used to connect endpoints with controllers
+
   std::unique_ptr<route_manager> rm = std::make_unique<route_manager>();
   rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
   rm->set_route("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
-
-  //Application context is injected with the tcp_server, the websocket handler, the utils the route manager
+  
+  //Application context is injected with the http handler, the websocket handler the route manager and util
   my_app->configure(std::move(http_server),
 		    std::move(ws), 
 		    std::move(std::make_unique<json_util_context>()),

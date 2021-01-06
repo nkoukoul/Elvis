@@ -39,21 +39,29 @@ void app::run(int thread_number)
     {
       thread_pool_.emplace_back(
           [&http_ioc = (this->http_ioc_)] {
-            http_ioc->run(app_instance_, std::make_shared<event_queue<std::function<void()>>>(4000));
+            http_ioc->run(
+                app_instance_,
+                std::make_shared<event_queue<std::function<void()>>>(
+                    4000,
+                    std::make_unique<t_cache<std::string, std::string>>(5)));
           });
-      std::thread::id ti = thread_pool_.back().get_id();
-      //Here we create an event queue as executor and a cache to each thread
-      app_cache_pool_.emplace(std::make_pair(ti, std::make_unique<t_cache<std::string, std::string>>(5)));
     }
-    //Here we create an event queue as executor and a cache to each thread
-    app_cache_pool_.emplace(std::make_pair(std::this_thread::get_id(), std::make_unique<t_cache<std::string, std::string>>(5)));
-    http_ioc_->run(app_instance_, std::make_shared<event_queue<std::function<void()>>>(4000));
+    http_ioc_->run(
+        app_instance_,
+        std::make_shared<event_queue<std::function<void()>>>(
+            4000,
+            std::make_unique<t_cache<std::string, std::string>>(5)));
   }
   // Block until all the threads exit
   for (auto &t : thread_pool_)
     if (t.joinable())
       t.join();
   return;
+}
+
+void app::add_route(std::string key ,std::string value)
+{
+  route_manager_table_.insert(std::make_pair(key, value));
 }
 
 app *app::get_instance()

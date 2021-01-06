@@ -32,18 +32,8 @@ void http_response_creator::create_response(
   else
   {
     //http connection
-    //i_controller *ic = application_context_->rm_->get_controller(deserialized_input_data["url"], deserialized_input_data["request_type"]);
-    auto ic = std::make_unique<file_get_controller>();
-    if (ic)
-    {
-      status = "200 OK";
-      controller_data = ic->run(std::move(deserialized_input_data), application_context_);
-    }
-    else
-    {
-      status = "400 Bad Request";
-      controller_data = "Url or method not supported";
-    }
+    status = deserialized_input_data["status"];
+    controller_data = deserialized_input_data["controller_data"];
     close_connection = true;
   }
 
