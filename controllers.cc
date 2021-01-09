@@ -37,16 +37,16 @@ void file_get_controller::do_stuff(
   //check for file existense should be added
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
   std::string filename = deserialized_input_data["url"].substr(index + 1);
-  if (!executor->get_executor_cache()->find<std::string, std::string>(filename))
+  if (!ac->app_cache_->find<std::string, std::string>(filename))
   {
-    executor->get_executor_cache()->insert<std::string, std::string>(
+    ac->app_cache_->insert<std::string, std::string>(
         std::make_pair(
             filename,
             std::move(ac->uc_->read_from_file("", filename))));
   }
 
   deserialized_input_data["controller_data"] =
-      (*(executor->get_executor_cache())).operator[]<std::string, std::string>(filename).second;
+      (*(ac->app_cache_)).operator[]<std::string, std::string>(filename).second;
 }
 
 //route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
@@ -61,10 +61,10 @@ void file_post_controller::do_stuff(
   // this is json data so further deserialization is needed
   fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
   fm->repr();
-  executor->get_executor_cache()->insert<std::string, std::string>(
+  ac->app_cache_->insert<std::string, std::string>(
       std::make_pair(fm->get_filename(),
                      std::move(ac->uc_->read_from_file("", fm->get_filename()))));
-  executor->get_executor_cache()->state();
+  ac->app_cache_->state();
 }
 
 void trigger_post_controller::do_stuff(
@@ -76,7 +76,7 @@ void trigger_post_controller::do_stuff(
   // this is json data so further deserialization is needed
   fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
   std::unordered_map<std::string, std::string> input_args = {{"data", ac->uc_->read_from_file("", fm->get_filename())}, {"Connection", "open"}};
-  for (auto fd_pair : ac->ws_ioc_->broadcast_fd_list)
+  for (auto fd_pair : ac->broadcast_fd_list)
   {
     if (fd_pair.first)
     {

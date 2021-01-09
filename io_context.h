@@ -15,7 +15,6 @@
 #include <unordered_map>
 #include <memory>
 #include <mutex>
-#include <sys/epoll.h>
 #include <fcntl.h>
 #include "request_context.h"
 #include "response_context.h"
@@ -91,18 +90,12 @@ public:
   app *ac_;
   std::unique_ptr<i_request_context> req_;
   std::unique_ptr<i_response_context> res_;
-  std::vector<std::pair<int, std::string>> broadcast_fd_list;
 
 private:
-  std::mutex socket_state_mutex_;
-  int epoll_fd;
-  struct epoll_event event;
-  struct epoll_event *events;
   std::string ipaddr_;
   int port_;
   int server_sock_;
   static const int MAXBUF = 1024;
-  static const int MAXEVENTS = 64;
 };
 
 #endif // IO_CONTEXT_H

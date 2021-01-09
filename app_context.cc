@@ -32,6 +32,9 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
 
 void app::run(int thread_number)
 {
+  broadcast_fd_list.resize(256, {0, ""});
+  app_cache_ = std::make_unique<t_cache<std::string, std::string>>(5);
+
   if (http_ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
@@ -41,16 +44,12 @@ void app::run(int thread_number)
           [&http_ioc = (this->http_ioc_)] {
             http_ioc->run(
                 app_instance_,
-                std::make_shared<event_queue<std::function<void()>>>(
-                    4000,
-                    std::make_unique<t_cache<std::string, std::string>>(5)));
+                std::make_shared<event_queue<std::function<void()>>>(4000));
           });
     }
     http_ioc_->run(
         app_instance_,
-        std::make_shared<event_queue<std::function<void()>>>(
-            4000,
-            std::make_unique<t_cache<std::string, std::string>>(5)));
+        std::make_shared<event_queue<std::function<void()>>>(4000));
   }
   // Block until all the threads exit
   for (auto &t : thread_pool_)

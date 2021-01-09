@@ -50,7 +50,6 @@ void io_context::run(app *ac, std::shared_ptr<i_event_queue> executor)
   {
     if (!executor->empty())
     {
-      auto s = executor->size();
       auto async_func = executor->consume_event<std::function<void()>>();
       async_func();
     }
@@ -194,14 +193,13 @@ void tcp_handler::do_write(
 websocket_handler::websocket_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac) : ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
 {
   std::signal(SIGPIPE, SIG_IGN);
-  broadcast_fd_list.resize(256, {0, ""});
 }
 
 void websocket_handler::register_socket(int const client_socket, std::shared_ptr<i_event_queue> executor)
 {
   if (client_socket > 255)
     return;
-  broadcast_fd_list[client_socket].first = client_socket;
+  ac_->broadcast_fd_list[client_socket].first = client_socket;
   non_block_socket(client_socket);
   executor->produce_event<std::function<void()>>(
       std::move(
@@ -228,10 +226,10 @@ void websocket_handler::do_read(int const client_socket, std::shared_ptr<i_event
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
       //read block so finished reading data from client. check if we actually read data
-      if (!broadcast_fd_list[client_socket].second.empty())
+      if (!ac_->broadcast_fd_list[client_socket].second.empty())
       {
-        input_websocket_frame_in_bits = broadcast_fd_list[client_socket].second;
-        broadcast_fd_list[client_socket].second.clear();
+        input_websocket_frame_in_bits = ac_->broadcast_fd_list[client_socket].second;
+        ac_->broadcast_fd_list[client_socket].second.clear();
         executor->produce_event<std::function<void()>>(
             std::move(
                 std::bind(
@@ -246,7 +244,7 @@ void websocket_handler::do_read(int const client_socket, std::shared_ptr<i_event
     {
       std::cout << "ws client disconnected or error\n";
       close(client_socket);
-      broadcast_fd_list[client_socket].first = 0;
+      ac_->broadcast_fd_list[client_socket].first = 0;
       return;
     }
   }
@@ -255,7 +253,7 @@ void websocket_handler::do_read(int const client_socket, std::shared_ptr<i_event
     for (int i = 0; i < bytes_read; i++)
     {
       std::bitset<8> bb(inbuffer[i]);
-      broadcast_fd_list[client_socket].second += bb.to_string();
+      ac_->broadcast_fd_list[client_socket].second += bb.to_string();
     }
   }
   //add another read job to the queue
@@ -278,7 +276,7 @@ void websocket_handler::do_write(
   {
     std::cout << "error during write\n";
     close(client_socket);
-    broadcast_fd_list[client_socket].first = 0;
+    ac_->broadcast_fd_list[client_socket].first = 0;
   }
   return;
 }

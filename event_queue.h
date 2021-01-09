@@ -20,10 +20,11 @@
 class base_event
 {
 public:
-  //base_event() = default;
   virtual ~base_event(){};
+  
   template <class T>
   const T &get_data() const;
+  
   template <class T, class U>
   void set_data(U &&data);
 };
@@ -33,7 +34,9 @@ class event : public base_event
 {
 public:
   event(int priority, T &&data) : priority_(priority), data_(std::move(data)){};
+  
   const T &get_data() const { return data_; }
+  
   void set_data(T &&data) { data_ = std::move(data); }
 
   bool operator<(event const &m_event) const
@@ -62,13 +65,16 @@ class i_event_queue
 {
 public:
   virtual ~i_event_queue(){};
+  
   template <class D>
   D consume_event();
+  
   template <class D, class U>
   void produce_event(U &&data);
+  
   virtual bool empty() const = 0;
+  
   virtual int size() const = 0;
-  virtual i_cache *get_executor_cache() = 0;
 };
 
 template <class D>
@@ -76,19 +82,11 @@ class event_queue : public i_event_queue
 {
 public:
   event_queue(
-      int const capacity,
-      std::unique_ptr<i_cache> executor_cache = nullptr)
-      : capacity_(capacity),
-        executor_cache_(std::move(executor_cache))
+      int const capacity)
+      : capacity_(capacity)
   {
     //e_q_.reserve(capacity_);
     //std::make_heap(e_q_.begin(),e_q_.end());
-  }
-  //~event_queue();
-
-  i_cache *get_executor_cache() override
-  {
-    return executor_cache_.get();
   }
 
   int size() const { return e_q_.size(); }
@@ -117,7 +115,6 @@ public:
   }
 
 private:
-  std::unique_ptr<i_cache> executor_cache_;
   std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
 };

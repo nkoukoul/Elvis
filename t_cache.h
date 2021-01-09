@@ -10,6 +10,7 @@
 #define T_CACHE_H
 
 #include <iostream>
+#include <mutex>
 #include <algorithm>
 #include <list>
 #include <vector>
@@ -37,6 +38,7 @@ public:
 
   void insert(std::pair<K, V> &&k_v_pair)
   {
+    std::lock_guard<std::mutex> guard(cache_lock_);
     std::chrono::steady_clock::time_point insertion_time = std::chrono::steady_clock::now();
     if (cache_index_.find(k_v_pair.first) == cache_index_.end())
     {
@@ -66,11 +68,13 @@ public:
 
   bool find(K const key)
   {
+    std::lock_guard<std::mutex> guard(cache_lock_);
     return cache_index_.find(key) != cache_index_.end();
   }
 
   std::pair<K, V> operator[](K const key)
   {
+    std::lock_guard<std::mutex> guard(cache_lock_);
     if (cache_index_.find(key) == cache_index_.end())
       return {};
     return cache_[cache_index_[key]].second;
@@ -87,6 +91,7 @@ public:
 
 private:
   int capacity_;
+  std::mutex cache_lock_;
   std::vector<std::pair<std::chrono::steady_clock::time_point, std::pair<K, V>>> cache_;
   std::unordered_map<K, int> cache_index_;
 

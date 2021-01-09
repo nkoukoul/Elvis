@@ -47,7 +47,9 @@ public:
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
+  std::unique_ptr<i_cache> app_cache_;
   static std::mutex app_mutex_;
+  std::vector<std::pair<int, std::string>> broadcast_fd_list;
 protected:
   app() = default;
   ~app(){};
