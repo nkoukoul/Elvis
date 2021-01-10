@@ -40,10 +40,10 @@ public:
       std::shared_ptr<i_event_queue> executor) = 0;
 };
 
-class tcp_handler : public io_context
+class http_handler : public io_context
 {
 public:
-  tcp_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac);
+  http_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac);
 
   void handle_connections(std::shared_ptr<i_event_queue> executor) override;
 

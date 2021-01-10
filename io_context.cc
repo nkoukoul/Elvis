@@ -42,7 +42,7 @@ void io_context::run(app *ac, std::shared_ptr<i_event_queue> executor)
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
-              &tcp_handler::handle_connections,
+              &http_handler::handle_connections,
               ac->http_ioc_.get(),
               executor)));
 
@@ -56,7 +56,7 @@ void io_context::run(app *ac, std::shared_ptr<i_event_queue> executor)
   }
 }
 
-tcp_handler::tcp_handler(
+http_handler::http_handler(
     std::string ipaddr,
     int port,
     std::unique_ptr<i_request_context> req,
@@ -80,7 +80,7 @@ tcp_handler::tcp_handler(
   listen(server_sock_, 5);
 }
 
-void tcp_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
+void http_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
 {
   struct sockaddr_in client;
   socklen_t client_len;
@@ -113,12 +113,12 @@ void tcp_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
-              &tcp_handler::handle_connections,
+              &http_handler::handle_connections,
               ac_->http_ioc_.get(),
               executor)));
 }
 
-void tcp_handler::do_read(int const client_socket, std::shared_ptr<i_event_queue> executor)
+void http_handler::do_read(int const client_socket, std::shared_ptr<i_event_queue> executor)
 {
   std::string input_data;
   char inbuffer[MAXBUF], *p = inbuffer;
@@ -164,7 +164,7 @@ void tcp_handler::do_read(int const client_socket, std::shared_ptr<i_event_queue
   }
 }
 
-void tcp_handler::do_write(
+void http_handler::do_write(
     int const client_socket,
     std::string output_data,
     bool close_connection,

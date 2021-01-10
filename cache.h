@@ -1,89 +1,127 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
-
 
 #ifndef CACHE_H
 #define CACHE_H
 
 #include <iostream>
-#include <list>
-#include <unordered_map>
 #include <mutex>
+#include <algorithm>
+#include <list>
+#include <vector>
+#include <chrono>
+#include <unordered_map>
 
-template<class K, class V>
-class cache{
+class i_cache
+{
 public:
-  cache(int capacity):capacity_(capacity){};
+  virtual ~i_cache(){};
   
-  void insert(std::pair<K,V> && k_v_pair){
+  template <class K, class V, class U, class X>
+  void insert(std::pair<U, X> &&k_v_pair);
+  
+  template <class K, class V>
+  V operator[](K const key);
+  
+  virtual void state(){};
+};
+
+template <class K, class V>
+class t_cache : public i_cache
+{
+public:
+  t_cache(int capacity) : capacity_(capacity){};
+
+  void insert(std::pair<K, V> &&k_v_pair)
+  {
     std::lock_guard<std::mutex> guard(cache_lock_);
-    if (cache_map_.find(k_v_pair.first) == cache_map_.end()){
-      K prev_begin_key;
-      
-      if (!cache_list_.empty()){
-	prev_begin_key = cache_list_.front().first;
+    std::chrono::steady_clock::time_point insertion_time = std::chrono::steady_clock::now();
+    if (cache_index_.find(k_v_pair.first) == cache_index_.end())
+    {
+      cache_.push_back(std::make_pair(insertion_time, k_v_pair));
+      cache_index_.insert(std::make_pair(k_v_pair.first, cache_.size() - 1));
+    }
+    else
+    {
+      cache_[cache_index_[k_v_pair.first]].first = insertion_time;
+      cache_[cache_index_[k_v_pair.first]].second.second = k_v_pair.second; 
+    }
+
+    if (cache_.size() > capacity_)
+    {
+      //O(nlog(n))
+      std::sort(cache_.begin(), cache_.end(), std::greater<>());
+      //O(n)
+      for (int i = 0; i < cache_.size(); i++)
+      {
+        cache_index_[cache_[i].second.first] = i;
       }
-      
-      cache_list_.push_front(k_v_pair);
-      
-      if (cache_list_.size() > 1){
-	auto prev_begin_key_it = std::next(cache_list_.begin());
-	cache_map_[prev_begin_key] = prev_begin_key_it;
-      }      
-      cache_map_.insert(std::make_pair(k_v_pair.first, cache_list_.begin()));
-      if (cache_list_.size() > capacity_){
-	K key_to_be_removed = cache_list_.back().first;
-	cache_map_.erase(key_to_be_removed);
-	cache_list_.pop_back();
-      }
+      K key_to_be_removed = cache_[cache_.size() - 1].second.first;
+      cache_index_.erase(key_to_be_removed);
+      cache_.pop_back();
     }
     return;
   }
 
-  bool find(K const key){
+  V operator[](K const key)
+  {
     std::lock_guard<std::mutex> guard(cache_lock_);
-    return cache_map_.find(key) != cache_map_.end();
-  }
-  
-  std::pair<K,V> & operator [](K key){
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    K prev_begin_key = cache_list_.front().first;
-    auto it = cache_map_[key];
-    std::pair<K,V> new_first_pair = *it;
-    cache_list_.erase(it);
-    cache_list_.push_front(new_first_pair);
-    auto prev_begin_key_it = std::next(cache_list_.begin());
-    cache_map_[prev_begin_key] = prev_begin_key_it;
-    cache_map_[key] = cache_list_.begin();
-    //std::swap(cache_map_[key]->second, cache_map_[prev_begin_key]->second);
-    return cache_list_.front();
+    V output;
+    if (cache_index_.find(key) == cache_index_.end())
+    {
+      return output;
+    }
+    else
+    {
+      std::chrono::steady_clock::time_point update_time = std::chrono::steady_clock::now();
+      cache_[cache_index_[key]].first = update_time;
+      return cache_[cache_index_[key]].second.second;
+    }
   }
 
-  void state(){
-    std::lock_guard<std::mutex> guard(cache_lock_);
-    for (auto it = cache_list_.begin(); it != cache_list_.end(); ++it){
-      std::cout << "key: " << it->first << " value: " << it->second << "\n";
+  void state()
+  {
+    auto end = std::chrono::steady_clock::now();
+    for (auto it = cache_.begin(); it != cache_.end(); ++it)
+    {
+      std::cout << "entry inserted before: "
+                << std::chrono::duration_cast<std::chrono::seconds>(end - it->first).count()
+                << " seconds key: " << it->second.first << "\n";
     }
   }
 
 private:
   int capacity_;
   std::mutex cache_lock_;
-  std::list<std::pair<K, V>> cache_list_;
-  std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator> cache_map_;
+  std::vector<std::pair<std::chrono::steady_clock::time_point, std::pair<K, V>>> cache_;
+  std::unordered_map<K, int> cache_index_;
 
-  bool empty() const {
-    return cache_list_.empty();
+  bool empty() const
+  {
+    return cache_.empty();
   }
 
-  int size() const {
-    return cache_list_.size();
+  int size() const
+  {
+    return cache_.size();
   }
 };
+
+template <class K, class V, class U, class X>
+void i_cache::insert(std::pair<U, X> &&k_v_pair)
+{
+  return dynamic_cast<t_cache<K, V> &>(*this).insert(std::move(k_v_pair));
+}
+
+template <class K, class V>
+V i_cache::operator[](K const key)
+{
+  return dynamic_cast<t_cache<K, V> &>(*this)[key];
+}
 
 #endif //CACHE_H

@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
   app * my_app = app::get_instance();
 
   //Here we create a tcp server and inject it with an http request/response context
-  std::unique_ptr<tcp_handler> http_server = std::make_unique<tcp_handler>
+  std::unique_ptr<http_handler> http_server = std::make_unique<http_handler>
     (ipaddr, port, std::move(std::make_unique<http_request_context>(my_app)), std::move(std::make_unique<http_response_context>(my_app)), my_app);
 
   //Here we create a handler for websocket connections and inject it with a websocket request/response context

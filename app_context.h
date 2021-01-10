@@ -18,7 +18,7 @@
 #include "json_utils.h"
 #include "utils.h"
 #include "response_context.h"
-#include "t_cache.h"
+#include "cache.h"
 
 class app{
 public:
@@ -32,7 +32,7 @@ public:
   // This is the static method that controls the access to the singleton
   static app * get_instance();
 
-  void configure(std::unique_ptr<tcp_handler> http_ioc = nullptr,
+  void configure(std::unique_ptr<http_handler> http_ioc = nullptr,
 		 std::unique_ptr<websocket_handler> ws_ioc = nullptr, 
 		 std::unique_ptr<i_json_util_context> juc = nullptr,
 		 std::unique_ptr<utils> uc = nullptr, 
@@ -42,7 +42,7 @@ public:
 
   void add_route(std::string key ,std::string value);
   
-  std::unique_ptr<tcp_handler> http_ioc_;
+  std::unique_ptr<http_handler> http_ioc_;
   std::unique_ptr<websocket_handler> ws_ioc_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<utils> uc_; 

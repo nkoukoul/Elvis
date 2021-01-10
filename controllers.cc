@@ -37,19 +37,18 @@ void file_get_controller::do_stuff(
   //check for file existense should be added
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
   std::string filename = deserialized_input_data["url"].substr(index + 1);
-  if (!ac->app_cache_->find<std::string, std::string>(filename))
+  std::string controller_data = (*(ac->app_cache_)).operator[]<std::string, std::string>(filename); 
+  if (controller_data.empty())
   {
+    controller_data = ac->uc_->read_from_file("", filename);
     ac->app_cache_->insert<std::string, std::string>(
-        std::make_pair(
-            filename,
-            std::move(ac->uc_->read_from_file("", filename))));
+        std::make_pair(filename, controller_data));
   }
-
-  deserialized_input_data["controller_data"] =
-      (*(ac->app_cache_)).operator[]<std::string, std::string>(filename).second;
+  deserialized_input_data["controller_data"] = controller_data;
 }
 
-//route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
+// route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
+// used to refresh or add to cache content
 void file_post_controller::do_stuff(
     std::unordered_map<std::string,
                        std::string> &deserialized_input_data,

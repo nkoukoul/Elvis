@@ -10,7 +10,7 @@
 app *app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
-void app::configure(std::unique_ptr<tcp_handler> http_ioc,
+void app::configure(std::unique_ptr<http_handler> http_ioc,
                     std::unique_ptr<websocket_handler> ws_ioc,
                     std::unique_ptr<i_json_util_context> juc,
                     std::unique_ptr<utils> uc,
