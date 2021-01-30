@@ -16,15 +16,16 @@
 #include <iostream>
 #include <algorithm>
 #include "cache.h"
+#include "db_connector.h"
 
 class base_event
 {
 public:
   virtual ~base_event(){};
-  
+
   template <class T>
   const T &get_data() const;
-  
+
   template <class T, class U>
   void set_data(U &&data);
 };
@@ -34,9 +35,9 @@ class event : public base_event
 {
 public:
   event(int priority, T &&data) : priority_(priority), data_(std::move(data)){};
-  
+
   const T &get_data() const { return data_; }
-  
+
   void set_data(T &&data) { data_ = std::move(data); }
 
   bool operator<(event const &m_event) const
@@ -65,16 +66,20 @@ class i_event_queue
 {
 public:
   virtual ~i_event_queue(){};
-  
+
   template <class D>
   D consume_event();
-  
+
   template <class D, class U>
   void produce_event(U &&data);
-  
+
   virtual bool empty() const = 0;
-  
+
   virtual int size() const = 0;
+
+  virtual i_cache *access_cache_() = 0;
+
+  virtual db_connector *access_connector() = 0;
 };
 
 template <class D>
@@ -85,8 +90,9 @@ public:
       int const capacity)
       : capacity_(capacity)
   {
-    //e_q_.reserve(capacity_);
-    //std::make_heap(e_q_.begin(),e_q_.end());
+    executor_cache_ = std::make_unique<t_cache<std::string, std::string>>(5);
+    pg_connector_ = std::make_unique<pg_connector>(
+        "test_db", "test", "test", "127.0.0.1", "5432");
   }
 
   int size() const { return e_q_.size(); }
@@ -98,7 +104,6 @@ public:
     D data;
     if (!empty())
     {
-      //std::pop_heap(e_q_.begin(), e_q_.end());
       data = e_q_.front()->get_data<D>();
       e_q_.pop();
     }
@@ -107,14 +112,23 @@ public:
 
   void produce_event(D &&data)
   {
-    //if (e_q_.size() > capacity_)
-    //return;
     e_q_.emplace(std::make_unique<event<D>>(100, std::move(data)));
-    //std::push_heap(e_q_.begin(),e_q_.end());
     return;
   }
 
+  i_cache *access_cache_()
+  {
+    return executor_cache_.get();
+  }
+
+  db_connector *access_connector()
+  {
+    return pg_connector_.get();
+  }
+
 private:
+  std::unique_ptr<i_cache> executor_cache_;
+  std::unique_ptr<db_connector> pg_connector_;
   std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
 };

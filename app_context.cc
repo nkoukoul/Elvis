@@ -33,8 +33,6 @@ void app::configure(std::unique_ptr<http_handler> http_ioc,
 void app::run(int thread_number)
 {
   broadcast_fd_list.resize(256, {0, ""});
-  app_cache_ = std::make_unique<t_cache<std::string, std::string>>(5);
-
   if (http_ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
@@ -58,7 +56,7 @@ void app::run(int thread_number)
   return;
 }
 
-void app::add_route(std::string key ,std::string value)
+void app::add_route(std::string key, std::string value)
 {
   route_manager_table_.insert(std::make_pair(key, value));
 }

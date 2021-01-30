@@ -37,14 +37,18 @@ void file_get_controller::do_stuff(
   //check for file existense should be added
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
   std::string filename = deserialized_input_data["url"].substr(index + 1);
-  std::string controller_data = (*(ac->app_cache_)).operator[]<std::string, std::string>(filename); 
+  auto fm = std::make_unique<file_model>(executor->access_connector());
+  fm->filename_.set(filename);
+  fm->retrieve_model();
+  //fm->repr();
+  std::string controller_data = (*(executor->access_cache_())).operator[]<std::string, std::string>(filename);
   if (controller_data.empty())
   {
     controller_data = ac->uc_->read_from_file("", filename);
-    ac->app_cache_->insert<std::string, std::string>(
+    executor->access_cache_()->insert<std::string, std::string>(
         std::make_pair(filename, controller_data));
   }
-  deserialized_input_data["controller_data"] = controller_data;
+  deserialized_input_data["controller_data"] = ac->uc_->read_from_file("", filename);
 }
 
 // route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
@@ -55,26 +59,29 @@ void file_post_controller::do_stuff(
     app *ac,
     std::shared_ptr<i_event_queue> executor)
 {
-  //eg model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
-  std::unique_ptr<file_model> fm = std::make_unique<file_model>();
+  //eg model is {"filename": "test.txt",  "md5sum_": "5f7f11f4b89befa92c9451ffa5c81184"}
+  auto fm =   std::make_unique<file_model>(executor->access_connector());
   // this is json data so further deserialization is needed
-  fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
-  fm->repr();
-  ac->app_cache_->insert<std::string, std::string>(
-      std::make_pair(fm->get_filename(),
-                     std::move(ac->uc_->read_from_file("", fm->get_filename()))));
-  ac->app_cache_->state();
+  auto model = ac->juc_->do_deserialize(std::move(deserialized_input_data["data"])).front();
+  fm->filename_.set(model["filename"]);
+  fm->md5sum_.set(model["md5sum"]); 
+  //fm->repr();
+  fm->insert_model();
+  executor->access_cache_()->insert<std::string, std::string>(
+      std::make_pair(fm->filename_.get(),
+                     std::move(ac->uc_->read_from_file("", fm->filename_.get()))));
+  executor->access_cache_()->state();
 }
 
+// http request is used to trigger a broadcast to all the ws clients
 void trigger_post_controller::do_stuff(
     std::unordered_map<std::string, std::string> &deserialized_input_data,
     app *ac,
     std::shared_ptr<i_event_queue> executor)
 {
-  std::unique_ptr<file_model> fm = std::make_unique<file_model>();
   // this is json data so further deserialization is needed
-  fm->model_map(std::move(ac->juc_->do_deserialize(std::move(deserialized_input_data["data"]))));
-  std::unordered_map<std::string, std::string> input_args = {{"data", ac->uc_->read_from_file("", fm->get_filename())}, {"Connection", "open"}};
+  std::unordered_map<std::string, std::string> input_args =
+      {{"data", ac->uc_->read_from_file("", "index.html")}, {"Connection", "open"}};
   for (auto fd_pair : ac->broadcast_fd_list)
   {
     if (fd_pair.first)
