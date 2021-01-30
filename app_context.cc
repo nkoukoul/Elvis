@@ -10,17 +10,22 @@
 app *app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
-void app::configure(std::unique_ptr<http_handler> http_ioc,
-                    std::unique_ptr<websocket_handler> ws_ioc,
+void app::configure(std::unique_ptr<tcp_handler> http_ioc,
+                    std::unique_ptr<http_request_context> http_req,
+                    std::unique_ptr<http_response_context> http_res,
+                    std::unique_ptr<websocket_request_context> ws_req,
+                    std::unique_ptr<websocket_response_context> ws_res,
                     std::unique_ptr<i_json_util_context> juc,
                     std::unique_ptr<utils> uc,
                     std::unique_ptr<route_manager> rm)
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
   if (http_ioc)
-    http_ioc_ = std::move(http_ioc);
-  if (ws_ioc)
-    ws_ioc_ = std::move(ws_ioc);
+    ioc_ = std::move(http_ioc);
+  http_req_ = std::move(http_req);
+  http_res_ = std::move(http_res);
+  ws_req_ = std::move(ws_req);
+  ws_res_ = std::move(ws_res);
   if (juc)
     juc_ = std::move(juc);
   if (uc)
@@ -33,19 +38,19 @@ void app::configure(std::unique_ptr<http_handler> http_ioc,
 void app::run(int thread_number)
 {
   broadcast_fd_list.resize(256, {0, ""});
-  if (http_ioc_)
+  if (ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
     for (auto i = thread_number - 1; i > 0; --i)
     {
       thread_pool_.emplace_back(
-          [&http_ioc = (this->http_ioc_)] {
+          [&http_ioc = (this->ioc_)] {
             http_ioc->run(
                 app_instance_,
                 std::make_shared<event_queue<std::function<void()>>>(4000));
           });
     }
-    http_ioc_->run(
+    ioc_->run(
         app_instance_,
         std::make_shared<event_queue<std::function<void()>>>(4000));
   }

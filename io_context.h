@@ -22,6 +22,22 @@
 
 class app;
 
+class client_context
+{
+public:
+  client_context() = default;
+  int client_socket_;
+  bool close_connection_;
+  bool is_websocket_;
+  bool handshake_completed_;
+  std::string http_message_;
+  std::string http_response_;
+  std::string websocket_message_;
+  std::string websocket_response_;
+  std::unordered_map<std::string, std::string> http_headers_;
+  std::unordered_map<std::string, std::string> websocket_data_;
+};
+
 class io_context
 {
 public:
@@ -31,33 +47,28 @@ public:
 
   virtual void handle_connections(std::shared_ptr<i_event_queue> executor) = 0;
 
-  virtual void do_read(int const client_socket, std::shared_ptr<i_event_queue> executor) = 0;
+  virtual void do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor) = 0;
 
   virtual void do_write(
-      int const client_socket,
-      std::string output_data,
-      bool close_connection,
+      std::shared_ptr<client_context> c_ctx,
       std::shared_ptr<i_event_queue> executor) = 0;
 };
 
-class http_handler : public io_context
+class tcp_handler : public io_context
 {
 public:
-  http_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac);
+  tcp_handler(std::string ipaddr, int port, app *ac);
 
   void handle_connections(std::shared_ptr<i_event_queue> executor) override;
 
-  void do_read(int const client_socket, std::shared_ptr<i_event_queue> executor) override;
+  void do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor) override;
 
   void do_write(
-      int const client_socket,
-      std::string output_data,
-      bool close_connection, std::shared_ptr<i_event_queue> executor) override;
+      std::shared_ptr<client_context> c_ctx,
+      std::shared_ptr<i_event_queue> executor) override;
 
   app *ac_;
-  std::unique_ptr<i_request_context> req_;
-  std::unique_ptr<i_response_context> res_;
-
+  
 private:
   std::string ipaddr_;
   int port_;
@@ -77,12 +88,10 @@ public:
 
   void handle_connections(std::shared_ptr<i_event_queue> executor) override;
 
-  void do_read(int const client_socket, std::shared_ptr<i_event_queue> executor) override;
+  void do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor) override;
 
   void do_write(
-      int const client_socket,
-      std::string output_data,
-      bool close_connection,
+      std::shared_ptr<client_context> c_ctx,
       std::shared_ptr<i_event_queue> executor) override;
 
   void register_socket(int const client_socket, std::shared_ptr<i_event_queue> executor);

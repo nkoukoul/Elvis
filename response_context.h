@@ -16,6 +16,7 @@
 #include "event_queue.h"
 
 class app;
+class client_context;
 
 class response_creator
 {
@@ -23,8 +24,7 @@ public:
   response_creator() = default;
 
   virtual void create_response(
-      int const client_socket,
-      std::unordered_map<std::string, std::string> &&deserialized_input_data,
+      std::shared_ptr<client_context> c_ctx,
       std::shared_ptr<i_event_queue> executor) const = 0;
 };
 
@@ -34,8 +34,7 @@ public:
   http_response_creator(app *application_context = nullptr);
 
   void create_response(
-      int const client_socket,
-      std::unordered_map<std::string, std::string> &&deserialized_input_data,
+      std::shared_ptr<client_context> c_ctx,
       std::shared_ptr<i_event_queue> executor) const override;
 
 private:
@@ -48,8 +47,7 @@ public:
   websocket_response_creator(app *application_context = nullptr);
 
   void create_response(
-      int const client_socket,
-      std::unordered_map<std::string, std::string> &&deserialized_input_data,
+      std::shared_ptr<client_context> c_ctx,
       std::shared_ptr<i_event_queue> executor) const override;
 
 private:
@@ -67,11 +65,10 @@ public:
   }
 
   void do_create_response(
-      int const client_socket,
-      std::unordered_map<std::string, std::string> deserialized_input_data,
+      std::shared_ptr<client_context> c_ctx,
       std::shared_ptr<i_event_queue> executor) const
   {
-    return response_->create_response(client_socket, std::move(deserialized_input_data), executor);
+    return response_->create_response(c_ctx, executor);
   }
 
 protected:

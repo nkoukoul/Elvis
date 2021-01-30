@@ -8,84 +8,82 @@
 
 #include "response_context.h"
 #include "app_context.h"
+#include "io_context.h"
 
 http_response_creator::http_response_creator(app *application_context) : application_context_(application_context) {}
 
 void http_response_creator::create_response(
-    int const client_socket,
-    std::unordered_map<std::string, std::string> &&deserialized_input_data,
+    std::shared_ptr<client_context> c_ctx,
     std::shared_ptr<i_event_queue> executor) const
 {
-
   std::string status;
   std::string controller_data;
   std::string sec_websocket_key;
   bool close_connection;
 
-  if (deserialized_input_data.find("Connection") != deserialized_input_data.end() && deserialized_input_data["Connection"] == "Upgrade" && deserialized_input_data.find("Upgrade") != deserialized_input_data.end() && deserialized_input_data["Upgrade"] == "websocket")
+  if (c_ctx->http_headers_.find("Connection") != c_ctx->http_headers_.end() && 
+      c_ctx->http_headers_["Connection"] == "Upgrade" && 
+      c_ctx->http_headers_.find("Upgrade") != c_ctx->http_headers_.end() && 
+      c_ctx->http_headers_["Upgrade"] == "websocket")
   {
     //wsconnection
     status = "101 Switching Protocols";
-    sec_websocket_key = application_context_->uc_->generate_ws_key(deserialized_input_data["Sec-WebSocket-Key"]);
-    close_connection = false;
+    sec_websocket_key = application_context_->uc_->generate_ws_key(c_ctx->http_headers_["Sec-WebSocket-Key"]);
+    c_ctx->close_connection_ = false;
+    c_ctx->is_websocket_ = true;
+    c_ctx->handshake_completed_ = false;
   }
   else
   {
     //http connection
-    status = deserialized_input_data["status"];
-    controller_data = deserialized_input_data["controller_data"];
-    close_connection = true;
+    status = c_ctx->http_headers_["status"];
+    controller_data = c_ctx->http_headers_["controller_data"];
+    c_ctx->close_connection_ = true;
   }
 
-  std::string response;
-  response.reserve(controller_data.size() + 1024);
-  response += "HTTP/1.1 " + status + "\r\n";
-  response += "Date: " + application_context_->uc_->daytime_() + "\r\n";
-  if (status == "101 Switching Protocols")
+  c_ctx->http_response_.reserve(controller_data.size() + 1024);
+  c_ctx->http_response_ += "HTTP/1.1 " + status + "\r\n";
+  c_ctx->http_response_ += "Date: " + application_context_->uc_->daytime_() + "\r\n";
+  if (c_ctx->is_websocket_)
   {
-    response += "Upgrade: websocket\r\n";
-    response += "Connection: Upgrade\r\n";
-    response += "Sec-WebSocket-Accept: " + sec_websocket_key + "\r\n";
+    c_ctx->http_response_ += "Upgrade: websocket\r\n";
+    c_ctx->http_response_ += "Connection: Upgrade\r\n";
+    c_ctx->http_response_ += "Sec-WebSocket-Accept: " + sec_websocket_key + "\r\n";
   }
   else
   {
-    response += "Connection: close\r\n";
+    c_ctx->http_response_ += "Connection: close\r\n";
   }
 
   if (!controller_data.empty())
   {
-    response += "Content-Type: text/html\r\n";
+    c_ctx->http_response_ += "Content-Type: text/html\r\n";
+    c_ctx->http_response_ += "Content-Length: " + std::to_string(controller_data.size() + 2) + "\r\n";
   }
 
+  c_ctx->http_response_ += "\r\n";
   if (!controller_data.empty())
   {
-    response += "Content-Length: " + std::to_string(controller_data.size() + 2) + "\r\n";
+    c_ctx->http_response_ += controller_data + "\r\n";
   }
-  response += "\r\n";
-  if (!controller_data.empty())
-    response += controller_data + "\r\n";
-
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &io_context::do_write,
-              application_context_->http_ioc_.get(),
-              client_socket,
-              std::move(response),
-              close_connection,
+              application_context_->ioc_.get(),
+              c_ctx,
               executor)));
 }
 
 websocket_response_creator::websocket_response_creator(app *application_context) : application_context_(application_context) {}
 
 void websocket_response_creator::create_response(
-    int const client_socket,
-    std::unordered_map<std::string, std::string> &&deserialized_input_data,
+    std::shared_ptr<client_context> c_ctx,
     std::shared_ptr<i_event_queue> executor) const
 {
   bool close_connection = false;
   std::bitset<4> b_opcode;
-  if (deserialized_input_data["Connection"] == "close")
+  if (c_ctx->websocket_data_["Connection"] == "close")
   {
     std::bitset<4> t_opcode(8);
     b_opcode = t_opcode;
@@ -96,9 +94,8 @@ void websocket_response_creator::create_response(
     std::bitset<4> t_opcode(1);
     b_opcode = t_opcode;
   }
-  unsigned int len = deserialized_input_data["data"].size();
+  unsigned int len = c_ctx->websocket_data_["data"].size();
   std::string extra_len = "";
-  std::string response;
   std::bitset<16> bs;
   bs[15] = 1;           //fin
   bs[14] = 0;           //RSV1
@@ -143,17 +140,15 @@ void websocket_response_creator::create_response(
     extra_len += len & 0x00000000000000ff; //1 byte    */
   }
   unsigned int first_part = application_context_->uc_->binary_to_decimal(bs.to_string());
-  response += (first_part & 0x0000ff00) >> 8; //MSB
-  response += first_part & 0x000000ff;        //LSB
-  response += extra_len;
-  response += deserialized_input_data["data"];
+  c_ctx->websocket_response_ += (first_part & 0x0000ff00) >> 8; //MSB
+  c_ctx->websocket_response_ += first_part & 0x000000ff;        //LSB
+  c_ctx->websocket_response_ += extra_len;
+  c_ctx->websocket_response_ += c_ctx->websocket_data_["data"];
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &io_context::do_write,
-              application_context_->ws_ioc_.get(),
-              client_socket,
-              std::move(response),
-              close_connection,
+              application_context_->ioc_.get(),
+              c_ctx,
               executor)));
 }

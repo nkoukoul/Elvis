@@ -16,6 +16,7 @@
 #include "event_queue.h"
 
 class app;
+class client_context;
 
 class i_controller
 {
@@ -23,8 +24,7 @@ public:
   i_controller() = default;
   
   void run(
-      std::unordered_map<std::string, std::string> deserialized_input_data,
-      int client_socket,
+      std::shared_ptr<client_context> c_ctx,
       app *ac,
       std::shared_ptr<i_event_queue> executor);
 

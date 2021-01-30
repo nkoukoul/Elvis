@@ -11,19 +11,17 @@
 #include "models.h"
 
 void i_controller::run(
-    std::unordered_map<std::string, std::string> deserialized_input_data,
-    int client_socket,
+    std::shared_ptr<client_context> c_ctx,
     app *ac,
     std::shared_ptr<i_event_queue> executor)
 {
-  do_stuff(deserialized_input_data, ac, executor);
+  do_stuff(c_ctx->http_headers_, ac, executor);
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &i_response_context::do_create_response,
-              ac->http_ioc_->res_.get(),
-              client_socket,
-              std::move(deserialized_input_data),
+              ac->http_res_.get(),
+              c_ctx,
               executor)));
 }
 
@@ -39,7 +37,7 @@ void file_get_controller::do_stuff(
   std::string filename = deserialized_input_data["url"].substr(index + 1);
   auto fm = std::make_unique<file_model>(executor->access_connector());
   fm->filename_.set(filename);
-  fm->retrieve_model();
+  //fm->retrieve_model();
   //fm->repr();
   std::string controller_data = (*(executor->access_cache_())).operator[]<std::string, std::string>(filename);
   if (controller_data.empty())
@@ -86,14 +84,14 @@ void trigger_post_controller::do_stuff(
   {
     if (fd_pair.first)
     {
-      executor->produce_event<std::function<void()>>(
-          std::move(
-              std::bind(
-                  &i_response_context::do_create_response,
-                  ac->ws_ioc_->res_.get(),
-                  fd_pair.first,
-                  input_args,
-                  executor)));
+      // executor->produce_event<std::function<void()>>(
+          // std::move(
+          //     std::bind(
+          //         &i_response_context::do_create_response,
+          //         ac->ws_ioc_->res_.get(),
+          //         fd_pair.first,
+          //         input_args,
+          //         executor)));
     }
   }
 }

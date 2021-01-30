@@ -33,18 +33,25 @@ public:
   // This is the static method that controls the access to the singleton
   static app * get_instance();
 
-  void configure(std::unique_ptr<http_handler> http_ioc = nullptr,
-		 std::unique_ptr<websocket_handler> ws_ioc = nullptr, 
-		 std::unique_ptr<i_json_util_context> juc = nullptr,
-		 std::unique_ptr<utils> uc = nullptr, 
-		 std::unique_ptr<route_manager> rm = nullptr);
-  
+  void configure(std::unique_ptr<tcp_handler> http_ioc = nullptr,
+                 std::unique_ptr<http_request_context> http_req = nullptr,
+                 std::unique_ptr<http_response_context> http_res = nullptr,
+                 std::unique_ptr<websocket_request_context> ws_req = nullptr,
+                 std::unique_ptr<websocket_response_context> ws_res = nullptr,
+                 std::unique_ptr<i_json_util_context> juc = nullptr,
+                 std::unique_ptr<utils> uc = nullptr,
+                 std::unique_ptr<route_manager> rm = nullptr);
+
   void run(int thread_number);
 
   void add_route(std::string key ,std::string value);
   
-  std::unique_ptr<http_handler> http_ioc_;
+  std::unique_ptr<tcp_handler> ioc_;
   std::unique_ptr<websocket_handler> ws_ioc_;
+  std::unique_ptr<http_request_context> http_req_;
+  std::unique_ptr<http_response_context> http_res_;
+  std::unique_ptr<websocket_request_context> ws_req_;
+  std::unique_ptr<websocket_response_context> ws_res_;
   std::unique_ptr<i_json_util_context> juc_; 
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
