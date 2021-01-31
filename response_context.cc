@@ -103,21 +103,21 @@ void websocket_response_creator::create_response(
   {
     payload_len = 126;
     c_ctx->websocket_response_ += (payload_len) & 0x7F;
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
     c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
   }
   else
   {
     payload_len = 127;
     c_ctx->websocket_response_ += (payload_len) & 0x7F;
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 16);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 24);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 32);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 40);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 48);
     c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 54);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 48);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 40);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 32);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 24);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 16);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
   }
   c_ctx->websocket_response_ += c_ctx->websocket_data_["data"];
 
