@@ -76,35 +76,4 @@ private:
   static const int MAXBUF = 1024;
 };
 
-//here will be used with the above tcp server so no need for listening to sockets
-class websocket_handler : public io_context
-{
-public:
-  websocket_handler(
-      std::string ipaddr,
-      int port, std::unique_ptr<i_request_context> req,
-      std::unique_ptr<i_response_context> res,
-      app *ac);
-
-  void handle_connections(std::shared_ptr<i_event_queue> executor) override;
-
-  void do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor) override;
-
-  void do_write(
-      std::shared_ptr<client_context> c_ctx,
-      std::shared_ptr<i_event_queue> executor) override;
-
-  void register_socket(int const client_socket, std::shared_ptr<i_event_queue> executor);
-
-  app *ac_;
-  std::unique_ptr<i_request_context> req_;
-  std::unique_ptr<i_response_context> res_;
-
-private:
-  std::string ipaddr_;
-  int port_;
-  int server_sock_;
-  static const int MAXBUF = 1024;
-};
-
 #endif // IO_CONTEXT_H

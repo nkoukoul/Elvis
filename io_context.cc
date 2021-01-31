@@ -221,30 +221,3 @@ void tcp_handler::do_write(
   }
   return;
 }
-
-websocket_handler::websocket_handler(std::string ipaddr, int port, std::unique_ptr<i_request_context> req, std::unique_ptr<i_response_context> res, app *ac) : ipaddr_(ipaddr), port_(port), req_(std::move(req)), res_(std::move(res)), ac_(ac)
-{
-  std::signal(SIGPIPE, SIG_IGN);
-}
-
-void websocket_handler::register_socket(int const client_socket, std::shared_ptr<i_event_queue> executor)
-{
-  
-}
-
-void websocket_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
-{
-
-}
-
-void websocket_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor)
-{
-  
-}
-
-void websocket_handler::do_write(
-    std::shared_ptr<client_context> c_ctx,
-    std::shared_ptr<i_event_queue> executor)
-{
-  
-}

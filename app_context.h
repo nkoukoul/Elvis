@@ -47,7 +47,6 @@ public:
   void add_route(std::string key ,std::string value);
   
   std::unique_ptr<tcp_handler> ioc_;
-  std::unique_ptr<websocket_handler> ws_ioc_;
   std::unique_ptr<http_request_context> http_req_;
   std::unique_ptr<http_response_context> http_res_;
   std::unique_ptr<websocket_request_context> ws_req_;

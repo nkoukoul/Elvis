@@ -81,69 +81,46 @@ void websocket_response_creator::create_response(
     std::shared_ptr<client_context> c_ctx,
     std::shared_ptr<i_event_queue> executor) const
 {
+  int payload_len;
   bool close_connection = false;
-  std::bitset<4> b_opcode;
   if (c_ctx->websocket_data_["Connection"] == "close")
   {
-    std::bitset<4> t_opcode(8);
-    b_opcode = t_opcode;
-    close_connection = true;
+    c_ctx->websocket_response_ += 0x88; //fin = 1, rsv1,2,3 = 0 text frame opcode = 8
+    c_ctx->close_connection_ = true;
   }
   else
   {
-    std::bitset<4> t_opcode(1);
-    b_opcode = t_opcode;
+    c_ctx->websocket_response_ += 0x81; //fin = 1, rsv1,2,3 = 0 text frame opcode = 1
+    c_ctx->close_connection_ = false;
   }
-  unsigned int len = c_ctx->websocket_data_["data"].size();
-  std::string extra_len = "";
-  std::bitset<16> bs;
-  bs[15] = 1;           //fin
-  bs[14] = 0;           //RSV1
-  bs[13] = 0;           //RSV2
-  bs[12] = 0;           //RSV3
-  bs[11] = b_opcode[3]; //opcode
-  bs[10] = b_opcode[2];
-  bs[9] = b_opcode[1];
-  bs[8] = b_opcode[0];
-  bs[7] = 0; //mask
-  if (len <= 125)
+
+  if (c_ctx->websocket_data_["data"].size() <= 125)
   {
-    std::bitset<7> b_len(len);
-    for (int i = 0; i < 7; i++)
-    {
-      bs[6 - i] = b_len[6 - i];
-    }
+    payload_len = c_ctx->websocket_data_["data"].size();
+    c_ctx->websocket_response_ += (payload_len) & 0x7F;
   }
-  else if (len <= 65535)
+  else if (c_ctx->websocket_data_["data"].size() <= 65535)
   {
-    std::bitset<7> b_len(126);
-    for (int i = 0; i < 7; i++)
-    {
-      bs[6 - i] = b_len[6 - i];
-    }
-    extra_len += (len & 0x0000ff00) >> 8; //MSB
-    extra_len += len & 0x000000ff;        //LSB
+    payload_len = 126;
+    c_ctx->websocket_response_ += (payload_len) & 0x7F;
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
   }
   else
   {
-    std::bitset<7> b_len(127);
-    /*for (int i = 0; i < 7; i++){
-      bs[6-i] = b_len[6-i];
-    }
-    extra_len += (len & 0xff00000000000000) >> 256; //8 byte
-    extra_len += (len & 0x00ff000000000000) >> 128; //7 byte    
-    extra_len += (len & 0x0000ff0000000000) >> 64; //6 byte   
-    extra_len += (len & 0x000000ff00000000) >> 32; //5 byte    
-    extra_len += (len & 0x00000000ff000000) >> 24; //4 byte    
-    extra_len += (len & 0x0000000000ff0000) >> 16; //3 byte    
-    extra_len += (len & 0x000000000000ff00) >> 8; //2 byte        
-    extra_len += len & 0x00000000000000ff; //1 byte    */
+    payload_len = 127;
+    c_ctx->websocket_response_ += (payload_len) & 0x7F;
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 16);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 24);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 32);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 40);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 48);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 54);
   }
-  unsigned int first_part = application_context_->uc_->binary_to_decimal(bs.to_string());
-  c_ctx->websocket_response_ += (first_part & 0x0000ff00) >> 8; //MSB
-  c_ctx->websocket_response_ += first_part & 0x000000ff;        //LSB
-  c_ctx->websocket_response_ += extra_len;
   c_ctx->websocket_response_ += c_ctx->websocket_data_["data"];
+
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(
