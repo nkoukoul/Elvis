@@ -1,36 +1,35 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
 
 #include "models.h"
 
-//model is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
-file_model::file_model(){
-  filename_ = attribute<std::string>();
-  md5sum_ =  attribute<std::string>();
+//model is {"filename": "test.txt",  "md5sum": "5f7f11f4b89befa92c9451ffa5c81184"}
+void file_model::insert_model(db_connector *db_conn)
+{
+  std::string sql = "insert into operations (filename, md5sum) values ('" 
+    + filename_.get() + "','" + md5sum_.get() + "')";
+  db_conn->pg_insert(sql);
 }
 
-void file_model::model_map(std::list<std::unordered_map<std::string, std::string>> && deserialized_object){
-  for (auto file : deserialized_object){//now it is only one always
-    filename_.set(file["filename"]);
-    md5sum_.set(file["md5"]);
+void file_model::retrieve_model(db_connector *db_conn)
+{
+  std::string sql = "select id, filename, md5sum from operations where filename = '" + filename_.get() + "'";
+  pqxx::result query_result;
+  db_conn->pg_select(sql, query_result);
+  for (pqxx::result::const_iterator c = query_result.begin(); c != query_result.end(); ++c)
+  {
+    filename_.set(c[1].as<std::string>());
+    md5sum_.set(c[2].as<std::string>());
   }
 }
 
-void file_model::repr(){
+void file_model::repr()
+{
   std::cout << "filename : " << filename_.get() << "\n";
   std::cout << "md5sum : " << md5sum_.get() << "\n";
-}
-
-
-std::string file_model::get_filename(){
-  return filename_.get();
-}
-
-std::string file_model::get_md5sum(){
-  return md5sum_.get();
 }

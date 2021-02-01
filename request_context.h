@@ -15,6 +15,7 @@
 #include "event_queue.h"
 
 class app;
+class client_context;
 
 class request_parser
 {
@@ -22,9 +23,7 @@ public:
   request_parser() = default;
 
   virtual void parse(
-      int const client_socket,
-      std::string &&input_data,
-      std::shared_ptr<i_event_queue> executor) const = 0;
+      std::shared_ptr<client_context> c_ctx) const = 0;
 };
 
 class http_request_parser : public request_parser
@@ -32,10 +31,7 @@ class http_request_parser : public request_parser
 public:
   http_request_parser(app *application_context = nullptr);
 
-  void parse(
-      int const client_socket,
-      std::string &&input_data,
-      std::shared_ptr<i_event_queue> executor) const override;
+  void parse(std::shared_ptr<client_context> c_ctx) const override;
 
 private:
   app *application_context_;
@@ -46,10 +42,7 @@ class websocket_request_parser : public request_parser
 public:
   websocket_request_parser(app *application_context = nullptr);
 
-  void parse(
-      int const client_socket,
-      std::string &&input_data,
-      std::shared_ptr<i_event_queue> executor) const override;
+  void parse(std::shared_ptr<client_context> c_ctx) const override;
 
 private:
   app *application_context_;
@@ -65,12 +58,9 @@ public:
     request_ = std::move(request);
   }
 
-  void do_parse(
-      int const client_socket,
-      std::string input_data,
-      std::shared_ptr<i_event_queue> executor) const
+  void do_parse(std::shared_ptr<client_context> c_ctx) const
   {
-    return request_->parse(client_socket, std::move(input_data), executor);
+    return request_->parse(c_ctx);
   }
 
 protected:

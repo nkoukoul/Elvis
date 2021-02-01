@@ -16,22 +16,18 @@
 #include "event_queue.h"
 
 class app;
+class client_context;
 
 class i_controller
 {
 public:
   i_controller() = default;
   
-  void run(
-      std::unordered_map<std::string, std::string> deserialized_input_data,
-      int client_socket,
-      app *ac,
-      std::shared_ptr<i_event_queue> executor);
+  void run(std::shared_ptr<client_context> c_ctx, app *ac);
 
   virtual void do_stuff(
       std::unordered_map<std::string, std::string> &deserialized_input_data,
-      app *ac,
-      std::shared_ptr<i_event_queue> executor) = 0;
+      app *ac) = 0;
 };
 
 class file_get_controller : public i_controller
@@ -41,8 +37,7 @@ public:
   
   void do_stuff(
       std::unordered_map<std::string, std::string> &deserialized_input_data,
-      app *ac,
-      std::shared_ptr<i_event_queue> executor) override;
+      app *ac) override;
   
 };
 
@@ -53,8 +48,7 @@ public:
   
   void do_stuff(
       std::unordered_map<std::string, std::string> &deserialized_input_data,
-      app *ac,
-      std::shared_ptr<i_event_queue> executor) override;
+      app *ac) override;
 
 };
 
@@ -64,8 +58,7 @@ public:
   trigger_post_controller() = default;
   void do_stuff(
       std::unordered_map<std::string, std::string> &deserialized_input_data,
-      app *ac,
-      std::shared_ptr<i_event_queue> executor) override;
+      app *ac) override;
 };
 
 #endif //CONTROLLERS_H
