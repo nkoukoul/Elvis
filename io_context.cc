@@ -37,25 +37,6 @@ void non_block_socket(int sd)
   }
 }
 
-void io_context::run(app *ac, std::shared_ptr<i_event_queue> executor)
-{
-  executor->produce_event<std::function<void()>>(
-      std::move(
-          std::bind(
-              &tcp_handler::handle_connections,
-              ac->ioc_.get(),
-              executor)));
-
-  while (true)
-  {
-    if (!executor->empty())
-    {
-      auto async_func = executor->consume_event<std::function<void()>>();
-      async_func();
-    }
-  }
-}
-
 tcp_handler::tcp_handler(
     std::string ipaddr,
     int port,
@@ -78,7 +59,25 @@ tcp_handler::tcp_handler(
   listen(server_sock_, 5);
 }
 
-void tcp_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
+void tcp_handler::run()
+{
+  ac_->executor_->produce_event<std::function<void()>>(
+      std::move(
+          std::bind(
+              &tcp_handler::handle_connections,
+              ac_->ioc_.get())));
+
+  while (true)
+  {
+    if (!ac_->executor_->empty())
+    {
+      auto async_func = ac_->executor_->consume_event<std::function<void()>>();
+      async_func();
+    }
+  }
+}
+
+void tcp_handler::handle_connections()
 {
   struct sockaddr_in client;
   socklen_t client_len;
@@ -102,23 +101,21 @@ void tcp_handler::handle_connections(std::shared_ptr<i_event_queue> executor)
     non_block_socket(client_socket);
     std::shared_ptr<client_context> c_ctx = std::make_shared<client_context>();
     c_ctx->client_socket_ = client_socket;
-    executor->produce_event<std::function<void()>>(
+    ac_->executor_->produce_event<std::function<void()>>(
         std::move(
             std::bind(
                 &io_context::do_read,
                 ac_->ioc_.get(),
-                c_ctx,
-                executor)));
+                c_ctx)));
   }
-  executor->produce_event<std::function<void()>>(
+  ac_->executor_->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &tcp_handler::handle_connections,
-              ac_->ioc_.get(),
-              executor)));
+              ac_->ioc_.get())));
 }
 
-void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor)
+void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
 {
   char inbuffer[MAXBUF], *p = inbuffer;
 
@@ -132,34 +129,31 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr
       //if is websocket and has data proceed to parsing
       if (c_ctx->is_websocket_ && c_ctx->websocket_message_.size())
       {
-        executor->produce_event<std::function<void()>>(
+        ac_->executor_->produce_event<std::function<void()>>(
             std::move(
                 std::bind(
                     &i_request_context::do_parse,
                     ac_->ws_req_.get(),
-                    c_ctx,
-                    executor)));
+                    c_ctx)));
       } //if is http and has data proceed to parsing
       else if (!c_ctx->is_websocket_ && c_ctx->http_message_.size())
       {
         c_ctx->http_message_ += '\n'; //add end of line for getline
-        executor->produce_event<std::function<void()>>(
+        ac_->executor_->produce_event<std::function<void()>>(
             std::move(
                 std::bind(
                     &i_request_context::do_parse,
                     ac_->http_req_.get(),
-                    c_ctx,
-                    executor)));
+                    c_ctx)));
       }
       else // read simply blocked with no data try again
       {
-        executor->produce_event<std::function<void()>>(
+        ac_->executor_->produce_event<std::function<void()>>(
             std::move(
                 std::bind(
                     &io_context::do_read,
                     ac_->ioc_.get(),
-                    c_ctx,
-                    executor)));
+                    c_ctx)));
       }
       return;
     }
@@ -187,19 +181,16 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr
       }
     }
     // maybe there some more data so add another read to the queue
-    executor->produce_event<std::function<void()>>(
+    ac_->executor_->produce_event<std::function<void()>>(
         std::move(
             std::bind(
                 &io_context::do_read,
                 ac_->ioc_.get(),
-                c_ctx,
-                executor)));
+                c_ctx)));
   }
 }
 
-void tcp_handler::do_write(
-    std::shared_ptr<client_context> c_ctx,
-    std::shared_ptr<i_event_queue> executor)
+void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
 {
   int status;
   if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
@@ -228,13 +219,12 @@ void tcp_handler::do_write(
       c_ctx->websocket_message_.clear();
       c_ctx->websocket_data_.clear();
       c_ctx->websocket_response_.clear();
-      executor->produce_event<std::function<void()>>(
+      ac_->executor_->produce_event<std::function<void()>>(
           std::move(
               std::bind(
                   &tcp_handler::do_read,
                   ac_->ioc_.get(),
-                  c_ctx,
-                  executor)));
+                  c_ctx)));
     }
   }
   return;

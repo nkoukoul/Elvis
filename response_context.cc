@@ -12,9 +12,7 @@
 
 http_response_creator::http_response_creator(app *application_context) : application_context_(application_context) {}
 
-void http_response_creator::create_response(
-    std::shared_ptr<client_context> c_ctx,
-    std::shared_ptr<i_event_queue> executor) const
+void http_response_creator::create_response(std::shared_ptr<client_context> c_ctx) const
 {
   std::string status;
   std::string controller_data;
@@ -66,20 +64,17 @@ void http_response_creator::create_response(
   {
     c_ctx->http_response_ += controller_data + "\r\n";
   }
-  executor->produce_event<std::function<void()>>(
+  application_context_->executor_->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &io_context::do_write,
               application_context_->ioc_.get(),
-              c_ctx,
-              executor)));
+              c_ctx)));
 }
 
 websocket_response_creator::websocket_response_creator(app *application_context) : application_context_(application_context) {}
 
-void websocket_response_creator::create_response(
-    std::shared_ptr<client_context> c_ctx,
-    std::shared_ptr<i_event_queue> executor) const
+void websocket_response_creator::create_response(std::shared_ptr<client_context> c_ctx) const
 {
   int payload_len;
   bool close_connection = false;
@@ -119,11 +114,10 @@ void websocket_response_creator::create_response(
   }
   c_ctx->websocket_response_ += c_ctx->websocket_data_;
 
-  executor->produce_event<std::function<void()>>(
+  application_context_->executor_->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &io_context::do_write,
               application_context_->ioc_.get(),
-              c_ctx,
-              executor)));
+              c_ctx)));
 }

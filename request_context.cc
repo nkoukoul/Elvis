@@ -12,9 +12,7 @@
 
 http_request_parser::http_request_parser(app *application_context) : application_context_(application_context) {}
 
-void http_request_parser::parse(
-    std::shared_ptr<client_context> c_ctx,
-    std::shared_ptr<i_event_queue> executor) const
+void http_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
 {
   std::istringstream ss(c_ctx->http_message_);
   std::string request_type, url, protocol, line;
@@ -58,35 +56,31 @@ void http_request_parser::parse(
   {
     c_ctx->http_headers_["status"] = "200 OK";
     c_ctx->http_headers_["controller_data"] = "";
-    executor->produce_event<std::function<void()>>(
+    application_context_->executor_->produce_event<std::function<void()>>(
         std::move(
             std::bind(
                 &i_controller::run,
                 ic,
                 c_ctx,
-                application_context_,
-                executor)));
+                application_context_)));
   }
   else
   {
     c_ctx->http_headers_["status"] = "400 Bad Request";
     c_ctx->http_headers_["controller_data"] = "Url or method not supported";
 
-    executor->produce_event<std::function<void()>>(
+    application_context_->executor_->produce_event<std::function<void()>>(
         std::move(
             std::bind(
                 &i_response_context::do_create_response,
                 application_context_->http_res_.get(),
-                c_ctx,
-                executor)));
+                c_ctx)));
   }
 }
 
 websocket_request_parser::websocket_request_parser(app *application_context) : application_context_(application_context) {}
 
-void websocket_request_parser::parse(
-    std::shared_ptr<client_context> c_ctx,
-    std::shared_ptr<i_event_queue> executor) const
+void websocket_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
 {
   int fin, rsv1, rsv2, rsv3, opcode, mask, i = 0;
   uint64_t payload_len;
@@ -138,11 +132,10 @@ void websocket_request_parser::parse(
   }
   //echo functionality for now
   c_ctx->websocket_data_ = std::move(unmasked_payload_data);
-  executor->produce_event<std::function<void()>>(
+  application_context_->executor_->produce_event<std::function<void()>>(
       std::move(
           std::bind(
               &i_response_context::do_create_response,
               application_context_->ws_res_.get(),
-              c_ctx,
-              executor)));
+              c_ctx)));
 }

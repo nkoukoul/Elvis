@@ -43,15 +43,13 @@ class io_context
 public:
   io_context() = default;
 
-  void run(app * ac, std::shared_ptr<i_event_queue> executor);
+  virtual void run() = 0;
 
-  virtual void handle_connections(std::shared_ptr<i_event_queue> executor) = 0;
+  virtual void handle_connections() = 0;
 
-  virtual void do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor) = 0;
+  virtual void do_read(std::shared_ptr<client_context> c_ctx) = 0;
 
-  virtual void do_write(
-      std::shared_ptr<client_context> c_ctx,
-      std::shared_ptr<i_event_queue> executor) = 0;
+  virtual void do_write(std::shared_ptr<client_context> c_ctx) = 0;
 };
 
 class tcp_handler : public io_context
@@ -59,13 +57,13 @@ class tcp_handler : public io_context
 public:
   tcp_handler(std::string ipaddr, int port, app *ac);
 
-  void handle_connections(std::shared_ptr<i_event_queue> executor) override;
+  void run() override;
 
-  void do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr<i_event_queue> executor) override;
+  void handle_connections() override;
 
-  void do_write(
-      std::shared_ptr<client_context> c_ctx,
-      std::shared_ptr<i_event_queue> executor) override;
+  void do_read(std::shared_ptr<client_context> c_ctx) override;
+
+  void do_write(std::shared_ptr<client_context> c_ctx) override;
 
   app *ac_;
   

@@ -46,6 +46,7 @@ public:
 
   void add_route(std::string key ,std::string value);
   
+  std::shared_ptr<i_event_queue> executor_;
   std::unique_ptr<tcp_handler> ioc_;
   std::unique_ptr<http_request_context> http_req_;
   std::unique_ptr<http_response_context> http_res_;
