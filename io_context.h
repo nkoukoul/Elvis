@@ -35,7 +35,7 @@ public:
   std::string websocket_message_;
   std::string websocket_response_;
   std::unordered_map<std::string, std::string> http_headers_;
-  std::unordered_map<std::string, std::string> websocket_data_;
+  std::string websocket_data_;
 };
 
 class io_context

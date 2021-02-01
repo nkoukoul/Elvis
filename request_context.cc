@@ -53,25 +53,25 @@ void http_request_parser::parse(
   i_controller *ic = application_context_->rm_->get_controller(
       c_ctx->http_headers_["url"],
       c_ctx->http_headers_["request_type"]);
-  
+
   if (ic)
   {
     c_ctx->http_headers_["status"] = "200 OK";
     c_ctx->http_headers_["controller_data"] = "";
     executor->produce_event<std::function<void()>>(
-      std::move(
-          std::bind(
-              &i_controller::run,
-              ic,
-              c_ctx,
-              application_context_,
-              executor)));  
+        std::move(
+            std::bind(
+                &i_controller::run,
+                ic,
+                c_ctx,
+                application_context_,
+                executor)));
   }
   else
   {
     c_ctx->http_headers_["status"] = "400 Bad Request";
     c_ctx->http_headers_["controller_data"] = "Url or method not supported";
-    
+
     executor->produce_event<std::function<void()>>(
         std::move(
             std::bind(
@@ -88,42 +88,56 @@ void websocket_request_parser::parse(
     std::shared_ptr<client_context> c_ctx,
     std::shared_ptr<i_event_queue> executor) const
 {
-  unsigned int payload_length = application_context_->uc_->binary_to_decimal(c_ctx->websocket_message_.substr(9, 7));
-  std::string mask_key;
+  int fin, rsv1, rsv2, rsv3, opcode, mask, i = 0;
+  uint64_t payload_len;
+  unsigned char mask_key[4];
+  uint8_t octet = (uint8_t)c_ctx->websocket_message_[i++]; //8 bit char
+  fin = (octet >> 7) & 0x01;
+  rsv1 = (octet >> 6) & 0x01;
+  rsv2 = (octet >> 5) & 0x01;
+  rsv3 = (octet >> 4) & 0x01;
+  opcode = octet & 0x0F;
+  octet = (uint8_t)c_ctx->websocket_message_[i++]; //8 bit char
+  mask = (octet >> 7) & 0x01;
+  payload_len = (octet)&0x7F;
   std::string unmasked_payload_data;
   std::string masked_payload_data;
-  std::string connection = "open";
-  int opcode = application_context_->uc_->binary_to_decimal(c_ctx->websocket_message_.substr(4, 4));
   if (opcode == 8)
   { //close received
-    connection = "close";
+    c_ctx->close_connection_ = true;
   }
-  if (payload_length == 126)
+  if (payload_len == 126)
   {
-    payload_length = application_context_->uc_->binary_to_decimal(c_ctx->websocket_message_.substr(16, 16));
-    mask_key = c_ctx->websocket_message_.substr(32, 32);
-    masked_payload_data = c_ctx->websocket_message_.substr(64, payload_length * 8);
+    payload_len = ((uint16_t)c_ctx->websocket_message_[i] << 8 & 0xff00) + ((uint16_t)c_ctx->websocket_message_[i + 1] & 0x00ff);
+    i += 2;
   }
-  else if (payload_length == 127)
+  else if (payload_len == 127)
   {
-    payload_length = application_context_->uc_->binary_to_decimal(c_ctx->websocket_message_.substr(16, 64));
-    mask_key = c_ctx->websocket_message_.substr(80, 32);
-    masked_payload_data = c_ctx->websocket_message_.substr(112, payload_length * 8);
+    payload_len = ((uint64_t)c_ctx->websocket_message_[i] << 56 & 0xff00000000000000) 
+                  + ((uint64_t)c_ctx->websocket_message_[i + 1] << 48 & 0x00ff000000000000)
+                  + ((uint64_t)c_ctx->websocket_message_[i + 2] << 40 & 0x0000ff0000000000)
+                  + ((uint64_t)c_ctx->websocket_message_[i + 3] << 32 & 0x000000ff00000000)
+                  + ((uint64_t)c_ctx->websocket_message_[i + 4] << 24 & 0x00000000ff000000)
+                  + ((uint64_t)c_ctx->websocket_message_[i + 5] << 16 & 0x0000000000ff0000)
+                  + ((uint64_t)c_ctx->websocket_message_[i + 6] << 8 & 0x000000000000ff00)
+                  + ((uint64_t)c_ctx->websocket_message_[i + 7] & 0x00000000000000ff);
+    i += 8;
   }
-  else
+  if (mask == 1)
   {
-    mask_key = c_ctx->websocket_message_.substr(16, 32);
-    masked_payload_data = c_ctx->websocket_message_.substr(48, payload_length * 8);
+    mask_key[0] = c_ctx->websocket_message_[i];
+    mask_key[1] = c_ctx->websocket_message_[i + 1];
+    mask_key[2] = c_ctx->websocket_message_[i + 2];
+    mask_key[3] = c_ctx->websocket_message_[i + 3];
+    i += 4;
   }
-
-  for (int i = 0; i < masked_payload_data.size() / 8; i++)
+  masked_payload_data = c_ctx->websocket_message_.substr(i);
+  for (uint64_t j = 0; j < payload_len; j++)
   {
-    std::string masked_sub_data = masked_payload_data.substr(i * 8, 8);
-    std::string mask_sub_key = mask_key.substr((i % 4) * 8, 8);
-    unmasked_payload_data += static_cast<char>(application_context_->uc_->binary_to_decimal(masked_sub_data) ^ application_context_->uc_->binary_to_decimal(mask_sub_key));
+    unmasked_payload_data += masked_payload_data[j] ^ (mask_key[(j % 4)]);
   }
-  //echo functinality for now
-  c_ctx->websocket_data_ = {{"data", unmasked_payload_data}, {"Connection", connection}};
+  //echo functionality for now
+  c_ctx->websocket_data_ = std::move(unmasked_payload_data);
   executor->produce_event<std::function<void()>>(
       std::move(
           std::bind(

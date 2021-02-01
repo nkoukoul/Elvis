@@ -128,14 +128,39 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      //client read block try again
-      executor->produce_event<std::function<void()>>(
-          std::move(
-              std::bind(
-                  &io_context::do_read,
-                  ac_->ioc_.get(),
-                  c_ctx,
-                  executor)));
+      //client read block 
+      //if is websocket and has data proceed to parsing
+      if (c_ctx->is_websocket_ && c_ctx->websocket_message_.size())
+      {
+        executor->produce_event<std::function<void()>>(
+            std::move(
+                std::bind(
+                    &i_request_context::do_parse,
+                    ac_->ws_req_.get(),
+                    c_ctx,
+                    executor)));
+      } //if is http and has data proceed to parsing
+      else if (!c_ctx->is_websocket_ && c_ctx->http_message_.size())
+      {
+        c_ctx->http_message_ += '\n'; //add end of line for getline
+        executor->produce_event<std::function<void()>>(
+            std::move(
+                std::bind(
+                    &i_request_context::do_parse,
+                    ac_->http_req_.get(),
+                    c_ctx,
+                    executor)));
+      }
+      else // read simply blocked with no data try again
+      {
+        executor->produce_event<std::function<void()>>(
+            std::move(
+                std::bind(
+                    &io_context::do_read,
+                    ac_->ioc_.get(),
+                    c_ctx,
+                    executor)));
+      }
       return;
     }
     else
@@ -145,22 +170,14 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr
       return;
     }
   }
-  else
+  else // we have data to read
   {
     if (c_ctx->is_websocket_)
     {
       for (int i = 0; i < bytes_read; i++)
       {
-        std::bitset<8> bb(inbuffer[i]);
-        c_ctx->websocket_message_ += bb.to_string();
+        c_ctx->websocket_message_ += inbuffer[i];
       }
-      executor->produce_event<std::function<void()>>(
-          std::move(
-              std::bind(
-                  &i_request_context::do_parse,
-                  ac_->ws_req_.get(),
-                  c_ctx,
-                  executor)));
     }
     else
     {
@@ -168,15 +185,15 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx, std::shared_ptr
       {
         c_ctx->http_message_ += inbuffer[i];
       }
-      c_ctx->http_message_ += '\n'; //add end of line for getline
-      executor->produce_event<std::function<void()>>(
-          std::move(
-              std::bind(
-                  &i_request_context::do_parse,
-                  ac_->http_req_.get(),
-                  c_ctx,
-                  executor)));
     }
+    // maybe there some more data so add another read to the queue
+    executor->produce_event<std::function<void()>>(
+        std::move(
+            std::bind(
+                &io_context::do_read,
+                ac_->ioc_.get(),
+                c_ctx,
+                executor)));
   }
 }
 
@@ -195,17 +212,17 @@ void tcp_handler::do_write(
     if (c_ctx->is_websocket_)
     {
       c_ctx->handshake_completed_ = true;
-    }    
+    }
   }
-  
+
   //close socket if http
   if (status < 0 || c_ctx->close_connection_)
-  {//to check eagain ewblock for nonblock sockets
+  { //to check eagain ewblock for nonblock sockets
     close(c_ctx->client_socket_);
   }
   else
   {
-    if(c_ctx->is_websocket_)
+    if (c_ctx->is_websocket_)
     {
       c_ctx->websocket_message_.clear();
       c_ctx->websocket_data_.clear();

@@ -83,43 +83,41 @@ void websocket_response_creator::create_response(
 {
   int payload_len;
   bool close_connection = false;
-  if (c_ctx->websocket_data_["Connection"] == "close")
+  if (c_ctx->close_connection_)
   {
     c_ctx->websocket_response_ += 0x88; //fin = 1, rsv1,2,3 = 0 text frame opcode = 8
-    c_ctx->close_connection_ = true;
   }
   else
   {
     c_ctx->websocket_response_ += 0x81; //fin = 1, rsv1,2,3 = 0 text frame opcode = 1
-    c_ctx->close_connection_ = false;
   }
 
-  if (c_ctx->websocket_data_["data"].size() <= 125)
+  if (c_ctx->websocket_data_.size() <= 125)
   {
-    payload_len = c_ctx->websocket_data_["data"].size();
+    payload_len = c_ctx->websocket_data_.size();
     c_ctx->websocket_response_ += (payload_len) & 0x7F;
   }
-  else if (c_ctx->websocket_data_["data"].size() <= 65535)
+  else if (c_ctx->websocket_data_.size() <= 65535)
   {
     payload_len = 126;
     c_ctx->websocket_response_ += (payload_len) & 0x7F;
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 8);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size());
   }
   else
   {
     payload_len = 127;
     c_ctx->websocket_response_ += (payload_len) & 0x7F;
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 54);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 48);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 40);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 32);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 24);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 16);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size() >> 8);
-    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_["data"].size());
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 54);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 48);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 40);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 32);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 24);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 16);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size() >> 8);
+    c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size());
   }
-  c_ctx->websocket_response_ += c_ctx->websocket_data_["data"];
+  c_ctx->websocket_response_ += c_ctx->websocket_data_;
 
   executor->produce_event<std::function<void()>>(
       std::move(
