@@ -13,6 +13,7 @@
 #include <queue>
 #include <string>
 #include <memory>
+#include <mutex>
 #include <iostream>
 #include <algorithm>
 #include "cache.h"
@@ -102,6 +103,7 @@ public:
   D consume_event()
   {
     D data;
+    std::lock_guard<std::mutex> lock(executor_lock_);
     if (!empty())
     {
       data = e_q_.front()->get_data<D>();
@@ -112,6 +114,7 @@ public:
 
   void produce_event(D &&data)
   {
+    std::lock_guard<std::mutex> lock(executor_lock_);
     e_q_.emplace(std::make_unique<event<D>>(100, std::move(data)));
     return;
   }
@@ -128,6 +131,7 @@ public:
 
 private:
   std::unique_ptr<i_cache> executor_cache_;
+  std::mutex executor_lock_;
   std::unique_ptr<db_connector> pg_connector_;
   std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;

@@ -55,7 +55,7 @@ public:
   std::unique_ptr<utils> uc_; 
   std::unique_ptr<route_manager> rm_;
   static std::mutex app_mutex_;
-  std::vector<std::pair<int, std::string>> broadcast_fd_list;
+  std::vector<int> broadcast_fd_list;
 protected:
   app() = default;
   ~app(){};

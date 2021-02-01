@@ -211,6 +211,7 @@ void tcp_handler::do_write(
     status = write(c_ctx->client_socket_, c_ctx->http_response_.c_str(), c_ctx->http_response_.size());
     if (c_ctx->is_websocket_)
     {
+      ac_->broadcast_fd_list.push_back(c_ctx->client_socket_);
       c_ctx->handshake_completed_ = true;
     }
   }

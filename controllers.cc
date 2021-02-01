@@ -80,10 +80,9 @@ void trigger_post_controller::do_stuff(
   // this is json data so further deserialization is needed
   std::unordered_map<std::string, std::string> input_args =
       {{"data", ac->uc_->read_from_file("", "index.html")}, {"Connection", "open"}};
-  for (auto fd_pair : ac->broadcast_fd_list)
+  for (auto fd : ac->broadcast_fd_list)
   {
-    if (fd_pair.first)
-    {
+    
       // executor->produce_event<std::function<void()>>(
           // std::move(
           //     std::bind(
@@ -92,6 +91,5 @@ void trigger_post_controller::do_stuff(
           //         fd_pair.first,
           //         input_args,
           //         executor)));
-    }
   }
 }

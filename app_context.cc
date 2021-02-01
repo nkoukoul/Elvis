@@ -37,22 +37,22 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
 
 void app::run(int thread_number)
 {
-  broadcast_fd_list.resize(256, {0, ""});
+  std::shared_ptr<event_queue<std::function<void()>>> executor = std::make_shared<event_queue<std::function<void()>>>(4000);
   if (ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
     for (auto i = thread_number - 1; i > 0; --i)
     {
       thread_pool_.emplace_back(
-          [&http_ioc = (this->ioc_)] {
+          [&http_ioc = (this->ioc_), &executor] {
             http_ioc->run(
                 app_instance_,
-                std::make_shared<event_queue<std::function<void()>>>(4000));
+                executor);
           });
     }
     ioc_->run(
         app_instance_,
-        std::make_shared<event_queue<std::function<void()>>>(4000));
+        executor);
   }
   // Block until all the threads exit
   for (auto &t : thread_pool_)
