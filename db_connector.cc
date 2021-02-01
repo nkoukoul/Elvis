@@ -16,11 +16,11 @@ pg_connector::pg_connector(std::string dbname,
     pg_connection_ = std::make_shared<pqxx::connection>(conn_info_);
     if (pg_connection_->is_open())
     {
-        std::cout << "Opened database successfully: " << pg_connection_->dbname() << "\n";
+        std::cout << "Opened connection to database successfully: " << pg_connection_->dbname() << "\n";
     }
     else
     {
-        std::cout << "Can't open database\n";
+        std::cout << "Can't open connection to database\n";
     }
 }
 
@@ -28,8 +28,6 @@ int pg_connector::pg_select(std::string sql, pqxx::result &mR) const
 {
     try
     {
-        //pqxx::connection pg_connection(conn_info_);
-
         /* Create a non transactional object. */
         pqxx::nontransaction N(*pg_connection_);
 
@@ -37,7 +35,6 @@ int pg_connector::pg_select(std::string sql, pqxx::result &mR) const
         pqxx::result R(N.exec(sql));
         mR = R;
         //std::cout << "Operation done successfully\n";
-        //pg_connection.disconnect();
     }
     catch (const std::exception &e)
     {
@@ -56,10 +53,8 @@ int pg_connector::pg_insert(std::string sql) const
 
         /* Execute SQL query */
         W.exec(sql);
-        //mR = R;
         W.commit();
         //std::cout << "Operation done successfully\n";
-        //pg_connection.disconnect();
     }
     catch (const std::exception &e)
     {
@@ -78,10 +73,8 @@ int pg_connector::pg_update(std::string sql) const
 
         /* Execute SQL query */
         W.exec(sql);
-        //mR = R;
         W.commit();
         //std::cout << "Operation done successfully\n";
-        //pg_connection.disconnect();
     }
     catch (const std::exception &e)
     {

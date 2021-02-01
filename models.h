@@ -35,9 +35,9 @@ class model
 public:
   model() = default;
 
-  virtual void insert_model() = 0;
+  virtual void insert_model(db_connector *db_conn) = 0;
 
-  virtual void retrieve_model() = 0;
+  virtual void retrieve_model(db_connector *db_conn) = 0;
 
   virtual void repr() = 0;
 };
@@ -45,21 +45,16 @@ public:
 class file_model : public model
 {
 public:
-  file_model() = delete;
+  file_model() = default;
 
-  file_model(db_connector *db_conn);
+  void insert_model(db_connector *db_conn) override;
 
-  void insert_model() override;
-
-  void retrieve_model() override;
+  void retrieve_model(db_connector *db_conn) override;
 
   void repr() override;
 
   attribute<std::string> filename_;
   attribute<std::string> md5sum_;
-
-private:
-  db_connector *db_conn_;
 };
 
 #endif //MODELS_H

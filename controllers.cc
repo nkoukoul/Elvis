@@ -30,9 +30,11 @@ void file_get_controller::do_stuff(
   //check for file existense should be added
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
   std::string filename = deserialized_input_data["url"].substr(index + 1);
-  auto fm = std::make_unique<file_model>(ac->executor_->access_connector());
+  auto db_c = ac->access_db_connector();
+  auto fm = std::make_unique<file_model>();
   fm->filename_.set(filename);
-  //fm->retrieve_model();
+  fm->retrieve_model(db_c.get());
+  ac->return_db_connector(std::move(db_c));
   //fm->repr();
   std::string controller_data = (*(ac->executor_->access_cache_())).operator[]<std::string, std::string>(filename);
   if (controller_data.empty())
@@ -52,13 +54,15 @@ void file_post_controller::do_stuff(
     app *ac)
 {
   //eg model is {"filename": "test.txt",  "md5sum_": "5f7f11f4b89befa92c9451ffa5c81184"}
-  auto fm = std::make_unique<file_model>(ac->executor_->access_connector());
+  auto fm = std::make_unique<file_model>();
   // this is json data so further deserialization is needed
   auto model = ac->juc_->do_deserialize(std::move(deserialized_input_data["data"])).front();
   fm->filename_.set(model["filename"]);
-  fm->md5sum_.set(model["md5sum"]); 
+  fm->md5sum_.set(model["md5sum"]);
   //fm->repr();
-  fm->insert_model();
+  auto db_c = ac->access_db_connector();
+  fm->insert_model(db_c.get());
+  ac->return_db_connector(std::move(db_c));
   ac->executor_->access_cache_()->insert<std::string, std::string>(
       std::make_pair(fm->filename_.get(),
                      std::move(ac->uc_->read_from_file("", fm->filename_.get()))));
@@ -75,14 +79,14 @@ void trigger_post_controller::do_stuff(
       {{"data", ac->uc_->read_from_file("", "index.html")}, {"Connection", "open"}};
   for (auto fd : ac->broadcast_fd_list)
   {
-    
-      // executor->produce_event<std::function<void()>>(
-          // std::move(
-          //     std::bind(
-          //         &i_response_context::do_create_response,
-          //         ac->ws_ioc_->res_.get(),
-          //         fd_pair.first,
-          //         input_args,
-          //         executor)));
+
+    // executor->produce_event<std::function<void()>>(
+    // std::move(
+    //     std::bind(
+    //         &i_response_context::do_create_response,
+    //         ac->ws_ioc_->res_.get(),
+    //         fd_pair.first,
+    //         input_args,
+    //         executor)));
   }
 }
