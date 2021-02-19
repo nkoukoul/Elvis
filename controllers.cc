@@ -36,11 +36,11 @@ void file_get_controller::do_stuff(
   fm->retrieve_model(db_c.get());
   ac->dbm_->return_db_connector(std::move(db_c));
   //fm->repr();
-  std::string controller_data = (*(ac->executor_->access_cache_())).operator[]<std::string, std::string>(filename);
+  std::string controller_data = ac->cache_->operator[]<std::string, std::string>(filename);
   if (controller_data.empty())
   {
     controller_data = ac->uc_->read_from_file("", filename);
-    ac->executor_->access_cache_()->insert<std::string, std::string>(
+    ac->cache_->insert<std::string, std::string>(
         std::make_pair(filename, controller_data));
   }
   deserialized_input_data["controller_data"] = ac->uc_->read_from_file("", filename);
@@ -63,10 +63,10 @@ void file_post_controller::do_stuff(
   auto db_c = ac->dbm_->access_db_connector();
   fm->insert_model(db_c.get());
   ac->dbm_->return_db_connector(std::move(db_c));
-  ac->executor_->access_cache_()->insert<std::string, std::string>(
+  ac->cache_->insert<std::string, std::string>(
       std::make_pair(fm->filename_.get(),
                      std::move(ac->uc_->read_from_file("", fm->filename_.get()))));
-  ac->executor_->access_cache_()->state();
+  ac->cache_->state();
 }
 
 // http request is used to trigger a broadcast to all the ws clients

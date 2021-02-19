@@ -16,8 +16,6 @@
 #include <mutex>
 #include <iostream>
 #include <algorithm>
-#include "cache.h"
-#include "db_connector.h"
 
 class base_event
 {
@@ -77,18 +75,13 @@ public:
   virtual bool empty() const = 0;
 
   virtual int size() const = 0;
-
-  virtual i_cache *access_cache_() = 0;
 };
 
 template <class D>
 class event_queue : public i_event_queue
 {
 public:
-  event_queue(int const capacity): capacity_(capacity)
-  {
-    executor_cache_ = std::make_unique<t_cache<std::string, std::string>>(5);
-  }
+  event_queue(int const capacity): capacity_(capacity){}
 
   int size() const { return e_q_.size(); }
 
@@ -113,13 +106,7 @@ public:
     return;
   }
 
-  i_cache *access_cache_()
-  {
-    return executor_cache_.get();
-  }
-
 private:
-  std::unique_ptr<i_cache> executor_cache_;
   std::mutex executor_lock_;
   std::queue<std::unique_ptr<base_event>> e_q_;
   const int capacity_;
