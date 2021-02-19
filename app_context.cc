@@ -37,8 +37,7 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
 
 void app::run(int thread_number)
 {
-  thread_num_ = thread_number;
-  create_db_thread_pool(thread_number);
+  dbm_ = std::make_unique<db_manager<pg_connector>>(thread_number); 
   executor_ = std::make_shared<event_queue<std::function<void()>>>(4000);
   if (ioc_)
   {
@@ -57,32 +56,6 @@ void app::run(int thread_number)
     if (t.joinable())
       t.join();
   return;
-}
-
-void app::create_db_thread_pool(int thread_number)
-{
-  for (auto i = thread_number; i > 0; --i)
-  {
-    db_connection_pool_.emplace_back(std::make_unique<pg_connector>("test_db", "test", "test", "127.0.0.1", "5432"));
-  }
-}
-
-std::unique_ptr<db_connector> app::access_db_connector()
-{
-  std::lock_guard<std::mutex> _lock(db_lock_);
-  if (db_connection_pool_.empty())
-  {
-    return nullptr;
-  }
-  auto db_c = std::move(db_connection_pool_.back());
-  db_connection_pool_.pop_back();
-  return std::move(db_c);
-}
-
-void app::return_db_connector(std::unique_ptr<db_connector> db_c)
-{
-  std::lock_guard<std::mutex> _lock(db_lock_);
-  db_connection_pool_.push_back(std::move(db_c));
 }
 
 void app::add_route(std::string key, std::string value)
