@@ -43,8 +43,6 @@ public:
 
   void run(int thread_number);
 
-  void add_route(std::string key, std::string value);
-
   std::shared_ptr<i_event_queue> executor_;
   std::unique_ptr<tcp_handler> ioc_;
   std::unique_ptr<http_request_context> http_req_;
@@ -67,7 +65,6 @@ protected:
 private:
   static app *app_instance_;
   std::vector<std::thread> thread_pool_;
-  std::unordered_map<std::string, std::string> route_manager_table_;
 };
 
 #endif //APP_CONTEXT_H

@@ -59,11 +59,6 @@ void app::run(int thread_number)
   return;
 }
 
-void app::add_route(std::string key, std::string value)
-{
-  route_manager_table_.insert(std::make_pair(key, value));
-}
-
 app *app::get_instance()
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
