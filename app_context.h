@@ -53,7 +53,7 @@ public:
   std::unique_ptr<utils> uc_;
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_db_manager> dbm_;
-  std::unique_ptr<i_cache> cache_;
+  std::unique_ptr<i_cache_manager> cm_;
   static std::mutex app_mutex_;
   std::mutex db_lock_;
   std::vector<int> broadcast_fd_list;

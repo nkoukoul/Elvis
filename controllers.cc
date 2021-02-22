@@ -34,12 +34,12 @@ void file_get_controller::do_stuff(
   fm->filename_.set(filename);
   fm->retrieve_model(ac);
   //fm->repr();
-  std::string controller_data = ac->cache_->operator[]<std::string, std::string>(filename);
+  auto cache = ac->cm_->access_cache<t_cache<std::string, std::string>>();
+  std::string controller_data = cache->operator[](filename);
   if (controller_data.empty())
   {
     controller_data = ac->uc_->read_from_file("", filename);
-    ac->cache_->insert<std::string, std::string>(
-        std::make_pair(filename, controller_data));
+    cache->insert(std::make_pair(filename, controller_data));
   }
   deserialized_input_data["controller_data"] = ac->uc_->read_from_file("", filename);
 }
@@ -59,10 +59,10 @@ void file_post_controller::do_stuff(
   fm->md5sum_.set(model["md5sum"]);
   //fm->repr();
   fm->insert_model(ac);
-  ac->cache_->insert<std::string, std::string>(
-      std::make_pair(fm->filename_.get(),
-                     std::move(ac->uc_->read_from_file("", fm->filename_.get()))));
-  ac->cache_->state();
+  auto cache = ac->cm_->access_cache<t_cache<std::string, std::string>>();
+  cache->insert(std::make_pair(fm->filename_.get(),
+                               std::move(ac->uc_->read_from_file("", fm->filename_.get()))));
+  cache->state();
 }
 
 // http request is used to trigger a broadcast to all the ws clients

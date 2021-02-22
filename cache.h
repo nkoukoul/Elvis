@@ -17,22 +17,30 @@
 #include <chrono>
 #include <unordered_map>
 
+template<class C, class K, class V>
 class i_cache
 {
 public:
-  virtual ~i_cache(){};
+  i_cache() = default;
   
-  template <class K, class V, class U, class X>
-  void insert(std::pair<U, X> &&k_v_pair);
+  void insert(std::pair<K, V> &&k_v_pair)
+  {
+    return static_cast<C *>(this)->insert(k_v_pair);
+  }
   
-  template <class K, class V>
-  V operator[](K const key);
+  V operator[](K const key)
+  {
+    return static_cast<C *>(this)->operator[](key);
+  }
   
-  virtual void state(){};
+  void state()
+  {
+    return static_cast<C *>(this)->state();
+  }
 };
 
 template <class K, class V>
-class t_cache : public i_cache
+class t_cache : public i_cache<t_cache<K, V>, K, V>
 {
 public:
   t_cache(int capacity) : capacity_(capacity){};
@@ -112,16 +120,37 @@ private:
   }
 };
 
-template <class K, class V, class U, class X>
-void i_cache::insert(std::pair<U, X> &&k_v_pair)
+class i_cache_manager
 {
-  return dynamic_cast<t_cache<K, V> &>(*this).insert(std::move(k_v_pair));
-}
+public:
+  virtual ~i_cache_manager(){};
+  
+  template<class I_CACHE>
+  I_CACHE *access_cache();
+};
 
-template <class K, class V>
-V i_cache::operator[](K const key)
+template<class CACHE>
+class cache_manager : public i_cache_manager
 {
-  return dynamic_cast<t_cache<K, V> &>(*this)[key];
+public:
+  cache_manager(int cache_size)
+  {
+    cache_ = std::make_unique<CACHE>(cache_size);
+  }
+
+  CACHE *access_cache()
+  {
+    return cache_.get();
+  }
+
+private:
+  std::unique_ptr<CACHE> cache_;
+};
+
+template <class I_CACHE>
+I_CACHE *i_cache_manager::access_cache()
+{
+  return static_cast<cache_manager<I_CACHE> *>(this)->access_cache();
 }
 
 #endif //CACHE_H

@@ -37,7 +37,7 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
 
 void app::run(int thread_number)
 {
-  cache_ = std::make_unique<t_cache<std::string, std::string>>(5);
+  cm_ = std::make_unique<cache_manager<t_cache<std::string, std::string>>>(5);
   dbm_ = std::make_unique<db_manager<pg_connector>>(thread_number); 
   executor_ = std::make_shared<event_queue<std::function<void()>>>(4000);
   if (ioc_)
