@@ -93,7 +93,7 @@ void tcp_handler::handle_connections()
     }
     else
     {
-      std::cout << "Error while accepting connection";
+      std::cout << "Error while accepting connection\n";
     }
   }
   else
@@ -148,6 +148,15 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
       }
       else // read simply blocked with no data try again
       {
+        if (!c_ctx->is_websocket_ && c_ctx->http_read_blocks_ > 3)
+        {
+          close(c_ctx->client_socket_);
+          return;
+        }
+        else if (!c_ctx->is_websocket_)
+        {
+          c_ctx->http_read_blocks_++;
+        }
         ac_->executor_->produce_event<std::function<void()>>(
             std::move(
                 std::bind(
@@ -208,7 +217,7 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
   }
 
   //close socket if http
-  if (status < 0 || c_ctx->close_connection_)
+  if (status <= 0 || c_ctx->close_connection_)
   { //to check eagain ewblock for nonblock sockets
     close(c_ctx->client_socket_);
   }

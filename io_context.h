@@ -27,6 +27,7 @@ class client_context
 public:
   client_context() = default;
   int client_socket_;
+  int http_read_blocks_;
   bool close_connection_;
   bool is_websocket_;
   bool handshake_completed_;
