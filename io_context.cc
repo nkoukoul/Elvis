@@ -61,7 +61,8 @@ tcp_handler::tcp_handler(
 
 void tcp_handler::run()
 {
-  ac_->executor_->produce_event<std::function<void()>>(
+  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
+  executor->produce_event(
       std::move(
           std::bind(
               &tcp_handler::handle_connections,
@@ -69,9 +70,9 @@ void tcp_handler::run()
 
   while (true)
   {
-    if (!ac_->executor_->empty())
+    if (!executor->empty())
     {
-      auto async_func = ac_->executor_->consume_event<std::function<void()>>();
+      auto async_func = executor->consume_event();
       async_func();
     }
   }
@@ -81,7 +82,7 @@ void tcp_handler::handle_connections()
 {
   struct sockaddr_in client;
   socklen_t client_len;
-
+  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   client_len = sizeof client;
   int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
   if (client_socket < 0)
@@ -101,14 +102,15 @@ void tcp_handler::handle_connections()
     non_block_socket(client_socket);
     std::shared_ptr<client_context> c_ctx = std::make_shared<client_context>();
     c_ctx->client_socket_ = client_socket;
-    ac_->executor_->produce_event<std::function<void()>>(
+    executor->produce_event(
         std::move(
             std::bind(
                 &io_context::do_read,
                 ac_->ioc_.get(),
                 c_ctx)));
   }
-  ac_->executor_->produce_event<std::function<void()>>(
+
+  executor->produce_event(
       std::move(
           std::bind(
               &tcp_handler::handle_connections,
@@ -117,8 +119,8 @@ void tcp_handler::handle_connections()
 
 void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
 {
+  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   char inbuffer[MAXBUF], *p = inbuffer;
-
   // Read data from client
   int bytes_read = read(c_ctx->client_socket_, inbuffer, MAXBUF);
   if (bytes_read <= 0)
@@ -129,7 +131,7 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
       //if is websocket and has data proceed to parsing
       if (c_ctx->is_websocket_ && c_ctx->websocket_message_.size())
       {
-        ac_->executor_->produce_event<std::function<void()>>(
+        executor->produce_event(
             std::move(
                 std::bind(
                     &i_request_context::do_parse,
@@ -139,7 +141,7 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
       else if (!c_ctx->is_websocket_ && c_ctx->http_message_.size())
       {
         c_ctx->http_message_ += '\n'; //add end of line for getline
-        ac_->executor_->produce_event<std::function<void()>>(
+        executor->produce_event(
             std::move(
                 std::bind(
                     &i_request_context::do_parse,
@@ -157,7 +159,7 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
         {
           c_ctx->http_read_blocks_++;
         }
-        ac_->executor_->produce_event<std::function<void()>>(
+        executor->produce_event(
             std::move(
                 std::bind(
                     &io_context::do_read,
@@ -190,7 +192,7 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
       }
     }
     // maybe there some more data so add another read to the queue
-    ac_->executor_->produce_event<std::function<void()>>(
+    executor->produce_event(
         std::move(
             std::bind(
                 &io_context::do_read,
@@ -201,6 +203,7 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
 
 void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
 {
+  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   int status;
   if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
   {
@@ -228,7 +231,7 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
       c_ctx->websocket_message_.clear();
       c_ctx->websocket_data_.clear();
       c_ctx->websocket_response_.clear();
-      ac_->executor_->produce_event<std::function<void()>>(
+      executor->produce_event(
           std::move(
               std::bind(
                   &tcp_handler::do_read,

@@ -13,7 +13,8 @@
 void i_controller::run(std::shared_ptr<client_context> c_ctx, app *ac)
 {
   do_stuff(c_ctx->http_headers_, ac);
-  ac->executor_->produce_event<std::function<void()>>(
+  auto executor = ac->sm_->access_strand<event_queue<std::function<void()>>>();
+  executor->produce_event(
       std::move(
           std::bind(
               &i_response_context::do_create_response,

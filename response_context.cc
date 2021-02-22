@@ -64,7 +64,8 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
   {
     c_ctx->http_response_ += controller_data + "\r\n";
   }
-  application_context_->executor_->produce_event<std::function<void()>>(
+  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
+  executor->produce_event(
       std::move(
           std::bind(
               &io_context::do_write,
@@ -113,8 +114,8 @@ void websocket_response_creator::create_response(std::shared_ptr<client_context>
     c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size());
   }
   c_ctx->websocket_response_ += c_ctx->websocket_data_;
-
-  application_context_->executor_->produce_event<std::function<void()>>(
+  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
+  executor->produce_event(
       std::move(
           std::bind(
               &io_context::do_write,

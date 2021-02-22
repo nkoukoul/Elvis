@@ -39,14 +39,15 @@ void app::run(int thread_number)
 {
   cm_ = std::make_unique<cache_manager<t_cache<std::string, std::string>>>(5);
   dbm_ = std::make_unique<db_manager<pg_connector>>(thread_number); 
-  executor_ = std::make_shared<event_queue<std::function<void()>>>(4000);
+  //executor_ = std::make_unique<event_queue<std::function<void()>>>(4000);
+  sm_ = std::make_unique<strand_manager<event_queue<std::function<void()>>>>(4000);
   if (ioc_)
   {
     thread_pool_.reserve(thread_number - 1);
     for (auto i = thread_number - 1; i > 0; --i)
     {
       thread_pool_.emplace_back(
-          [&http_ioc = (this->ioc_), &executor = (this->executor_)] {
+          [&http_ioc = (this->ioc_)] {
             http_ioc->run();
           });
     }

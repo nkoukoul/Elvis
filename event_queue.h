@@ -61,16 +61,15 @@ void base_event::set_data(U &&data)
   return dynamic_cast<event<T> &>(*this).set_value(std::move(data));
 }
 
+template <class E, class D>
 class i_event_queue
 {
 public:
   virtual ~i_event_queue(){};
 
-  template <class D>
   D consume_event();
 
-  template <class D, class U>
-  void produce_event(U &&data);
+  void produce_event(D &&data);
 
   virtual bool empty() const = 0;
 
@@ -78,10 +77,10 @@ public:
 };
 
 template <class D>
-class event_queue : public i_event_queue
+class event_queue : public i_event_queue<event_queue<D>, D>
 {
 public:
-  event_queue(int const capacity): capacity_(capacity){}
+  event_queue(int const capacity) : capacity_(capacity) {}
 
   int size() const { return e_q_.size(); }
 
@@ -112,16 +111,38 @@ private:
   const int capacity_;
 };
 
-template <class D>
-D i_event_queue::consume_event()
+class i_strand_manager
 {
-  return dynamic_cast<event_queue<D> &>(*this).consume_event();
-}
+public:
+  virtual ~i_strand_manager(){};
 
-template <class D, class U>
-void i_event_queue::produce_event(U &&data)
+  template<class I_STRAND>
+  I_STRAND *access_strand();
+
+};
+
+template <class STRAND>
+class strand_manager : public i_strand_manager
 {
-  return dynamic_cast<event_queue<D> &>(*this).produce_event(std::move(data));
+public:
+  strand_manager(int size)
+  {
+    strand_ = std::make_unique<STRAND>(size);
+  }
+
+  STRAND *access_strand()
+  {
+    return strand_.get();
+  }
+
+private:
+  std::unique_ptr<STRAND> strand_;
+};
+
+template <class I_STRAND>
+I_STRAND *i_strand_manager::access_strand()
+{
+  return static_cast<strand_manager<I_STRAND> *>(this)->access_strand();
 }
 
 #endif // EVENT_QUEUE_H

@@ -14,6 +14,7 @@ http_request_parser::http_request_parser(app *application_context) : application
 
 void http_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
 {
+  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
   std::istringstream ss(c_ctx->http_message_);
   std::string request_type, url, protocol, line;
 
@@ -56,7 +57,7 @@ void http_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
   {
     c_ctx->http_headers_["status"] = "200 OK";
     c_ctx->http_headers_["controller_data"] = "";
-    application_context_->executor_->produce_event<std::function<void()>>(
+    executor->produce_event(
         std::move(
             std::bind(
                 &i_controller::run,
@@ -69,7 +70,7 @@ void http_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
     c_ctx->http_headers_["status"] = "400 Bad Request";
     c_ctx->http_headers_["controller_data"] = "Url or method not supported";
 
-    application_context_->executor_->produce_event<std::function<void()>>(
+    executor->produce_event(
         std::move(
             std::bind(
                 &i_response_context::do_create_response,
@@ -132,7 +133,8 @@ void websocket_request_parser::parse(std::shared_ptr<client_context> c_ctx) cons
   }
   //echo functionality for now
   c_ctx->websocket_data_ = std::move(unmasked_payload_data);
-  application_context_->executor_->produce_event<std::function<void()>>(
+  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
+  executor->produce_event(
       std::move(
           std::bind(
               &i_response_context::do_create_response,
