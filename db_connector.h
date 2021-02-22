@@ -9,19 +9,29 @@
 #include <pqxx/pqxx>
 #include <mutex>
 
+template<class D, class R>
 class db_connector
 {
 public:
     db_connector() = default;
 
-    virtual int pg_select(std::string sql, pqxx::result &mR) const = 0;
+    int select(std::string sql, R &mR) const
+    {
+        return static_cast<D *>(this)->select(sql, mR);
+    }
 
-    virtual int pg_insert(std::string sql) const = 0;
+    int insert(std::string sql) const
+    {
+        return static_cast<D *>(this)->insert(sql);
+    }
 
-    virtual int pg_update(std::string sql) const = 0;
+    int update(std::string sql) const
+    {
+        return static_cast<D *>(this)->update(sql);
+    }
 };
 
-class pg_connector : public db_connector
+class pg_connector : public db_connector<pg_connector, pqxx::result>
 {
 public:
     pg_connector(std::string dbname,
@@ -32,11 +42,11 @@ public:
     // arg[0] = table name
     // arg[1] = column name
     // arg[2] = order by
-    int pg_select(std::string sql, pqxx::result &mR) const override;
+    int select(std::string sql, pqxx::result &mR) const;
     
-    int pg_insert(std::string sql) const override;
+    int insert(std::string sql) const;
     
-    int pg_update(std::string sql) const override;
+    int update(std::string sql) const;
 private:
     std::string conn_info_;
     std::string dbname_, user_, password_, hostaddr_, port_;

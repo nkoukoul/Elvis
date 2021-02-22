@@ -15,7 +15,7 @@
 #include <vector>
 #include <list>
 #include <iostream>
-#include "db_connector.h"
+#include "app_context.h"
 
 template <class T>
 class attribute
@@ -35,9 +35,9 @@ class model
 public:
   model() = default;
 
-  virtual void insert_model(db_connector *db_conn) = 0;
+  virtual void insert_model(app *ac) = 0;
 
-  virtual void retrieve_model(db_connector *db_conn) = 0;
+  virtual void retrieve_model(app *ac) = 0;
 
   virtual void repr() = 0;
 };
@@ -47,9 +47,9 @@ class file_model : public model
 public:
   file_model() = default;
 
-  void insert_model(db_connector *db_conn) override;
+  void insert_model(app *ac) override;
 
-  void retrieve_model(db_connector *db_conn) override;
+  void retrieve_model(app *ac) override;
 
   void repr() override;
 

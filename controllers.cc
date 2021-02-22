@@ -30,11 +30,9 @@ void file_get_controller::do_stuff(
   //check for file existense should be added
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
   std::string filename = deserialized_input_data["url"].substr(index + 1);
-  auto db_c = ac->dbm_->access_db_connector();
   auto fm = std::make_unique<file_model>();
   fm->filename_.set(filename);
-  fm->retrieve_model(db_c.get());
-  ac->dbm_->return_db_connector(std::move(db_c));
+  fm->retrieve_model(ac);
   //fm->repr();
   std::string controller_data = ac->cache_->operator[]<std::string, std::string>(filename);
   if (controller_data.empty())
@@ -60,9 +58,7 @@ void file_post_controller::do_stuff(
   fm->filename_.set(model["filename"]);
   fm->md5sum_.set(model["md5sum"]);
   //fm->repr();
-  auto db_c = ac->dbm_->access_db_connector();
-  fm->insert_model(db_c.get());
-  ac->dbm_->return_db_connector(std::move(db_c));
+  fm->insert_model(ac);
   ac->cache_->insert<std::string, std::string>(
       std::make_pair(fm->filename_.get(),
                      std::move(ac->uc_->read_from_file("", fm->filename_.get()))));

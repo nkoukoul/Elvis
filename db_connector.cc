@@ -24,7 +24,7 @@ pg_connector::pg_connector(std::string dbname,
     }
 }
 
-int pg_connector::pg_select(std::string sql, pqxx::result &mR) const
+int pg_connector::select(std::string sql, pqxx::result &mR) const
 {
     try
     {
@@ -44,7 +44,7 @@ int pg_connector::pg_select(std::string sql, pqxx::result &mR) const
     return 0;
 }
 
-int pg_connector::pg_insert(std::string sql) const
+int pg_connector::insert(std::string sql) const
 {
     try
     {
@@ -64,7 +64,7 @@ int pg_connector::pg_insert(std::string sql) const
     return 0;
 }
 
-int pg_connector::pg_update(std::string sql) const
+int pg_connector::update(std::string sql) const
 {
     try
     {
