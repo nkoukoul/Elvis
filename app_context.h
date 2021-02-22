@@ -52,7 +52,7 @@ public:
   std::unique_ptr<i_json_util_context> juc_;
   std::unique_ptr<utils> uc_;
   std::unique_ptr<route_manager> rm_;
-  std::unique_ptr<db_manager<pg_connector>> dbm_;
+  std::unique_ptr<i_db_manager> dbm_;
   std::unique_ptr<i_cache> cache_;
   static std::mutex app_mutex_;
   std::mutex db_lock_;
