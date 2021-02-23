@@ -20,8 +20,6 @@
 #include "io_context.h"
 #include "app_context.h"
 
-int socket_timeout = 3000;
-
 void non_block_socket(int sd)
 {
   /* set O_NONBLOCK on fd */
@@ -85,7 +83,7 @@ void tcp_handler::handle_connections()
   auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   client_len = sizeof client;
   int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
-  if (client_socket < 0)
+  if (client_socket <= 0)
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
@@ -123,11 +121,17 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
   char inbuffer[MAXBUF], *p = inbuffer;
   // Read data from client
   int bytes_read = read(c_ctx->client_socket_, inbuffer, MAXBUF);
-  if (bytes_read <= 0)
+  // Client closed connection
+  if (bytes_read == 0)
   {
+    close(c_ctx->client_socket_);
+    return;
+  }
+  if (bytes_read < 0)
+  {
+    // Client read block
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      //client read block 
       //if is websocket and has data proceed to parsing
       if (c_ctx->is_websocket_ && c_ctx->websocket_message_.size())
       {
@@ -147,18 +151,9 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
                     &i_request_context::do_parse,
                     ac_->http_req_.get(),
                     c_ctx)));
-      }
-      else // read simply blocked with no data try again
+      } // read simply blocked with no data try again
+      else
       {
-        if (!c_ctx->is_websocket_ && c_ctx->http_read_blocks_ > 3)
-        {
-          close(c_ctx->client_socket_);
-          return;
-        }
-        else if (!c_ctx->is_websocket_)
-        {
-          c_ctx->http_read_blocks_++;
-        }
         executor->produce_event(
             std::move(
                 std::bind(
@@ -170,12 +165,12 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
     }
     else
     {
-      //client closed connection
+      // TCP read error
       close(c_ctx->client_socket_);
       return;
     }
   }
-  else // we have data to read
+  else // We have data to read
   {
     if (c_ctx->is_websocket_)
     {
@@ -204,40 +199,66 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
 void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
 {
   auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
-  int status;
+  int bytes_write;
   if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
   {
-    status = write(c_ctx->client_socket_, c_ctx->websocket_response_.c_str(), c_ctx->websocket_response_.size());
+    bytes_write = write(c_ctx->client_socket_, c_ctx->websocket_response_.c_str(), c_ctx->websocket_response_.size());
   }
   else
   {
-    status = write(c_ctx->client_socket_, c_ctx->http_response_.c_str(), c_ctx->http_response_.size());
-    if (c_ctx->is_websocket_)
+    bytes_write = write(c_ctx->client_socket_, c_ctx->http_response_.c_str(), c_ctx->http_response_.size());
+  }
+  
+  // Client closed connection
+  if (bytes_write == 0)
+  {
+    close(c_ctx->client_socket_);
+    return;
+  }
+  
+  // Error handling
+  if (bytes_write < 0)
+  { // Write block try again
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+      executor->produce_event(
+          std::move(
+              std::bind(
+                  &io_context::do_write,
+                  ac_->ioc_.get(),
+                  c_ctx)));
+    }
+    else
+    {
+      // TCP write error
+      close(c_ctx->client_socket_);
+    }
+    return;
+  }
+
+  //close socket
+  if (c_ctx->close_connection_)
+  {
+    close(c_ctx->client_socket_);
+    return;
+  }
+  else if (c_ctx->is_websocket_)
+  {
+    if (!c_ctx->handshake_completed_)
     {
       ac_->broadcast_fd_list.push_back(c_ctx->client_socket_);
       c_ctx->handshake_completed_ = true;
     }
+    c_ctx->websocket_message_.clear();
+    c_ctx->websocket_data_.clear();
+    c_ctx->websocket_response_.clear();
   }
-
-  //close socket if http
-  if (status <= 0 || c_ctx->close_connection_)
-  { //to check eagain ewblock for nonblock sockets
-    close(c_ctx->client_socket_);
-  }
-  else
-  {
-    if (c_ctx->is_websocket_)
-    {
-      c_ctx->websocket_message_.clear();
-      c_ctx->websocket_data_.clear();
-      c_ctx->websocket_response_.clear();
-      executor->produce_event(
-          std::move(
-              std::bind(
-                  &tcp_handler::do_read,
-                  ac_->ioc_.get(),
-                  c_ctx)));
-    }
-  }
+  // if socket is still open with http keep-alive or ws read again
+  executor->produce_event(
+      std::move(
+          std::bind(
+              &tcp_handler::do_read,
+              ac_->ioc_.get(),
+              c_ctx)));
   return;
 }

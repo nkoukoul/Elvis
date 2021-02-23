@@ -36,7 +36,16 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
     //http connection
     status = c_ctx->http_headers_["status"];
     controller_data = c_ctx->http_headers_["controller_data"];
-    c_ctx->close_connection_ = true;
+    if (c_ctx->http_headers_["status"] == "400 Bad Request" ||
+        c_ctx->http_headers_.find("Connection") == c_ctx->http_headers_.end() ||
+        c_ctx->http_headers_["Connection"] == "close")
+    {
+      c_ctx->close_connection_ = true;
+    }
+    else
+    { // keep connection open for more
+      c_ctx->close_connection_ = false;
+    }
   }
 
   c_ctx->http_response_.reserve(controller_data.size() + 1024);
@@ -48,10 +57,16 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
     c_ctx->http_response_ += "Connection: Upgrade\r\n";
     c_ctx->http_response_ += "Sec-WebSocket-Accept: " + sec_websocket_key + "\r\n";
   }
-  else
+  else if (c_ctx->close_connection_)
   {
     c_ctx->http_response_ += "Connection: close\r\n";
   }
+  else
+  {
+    c_ctx->http_response_ += "Connection: keep-alive\r\n";
+    c_ctx->http_response_ += "Keep-Alive: timeout=2, max=1000\r\n";
+  }
+  
 
   if (!controller_data.empty())
   {
