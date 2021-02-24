@@ -1,6 +1,6 @@
 #include "utils.h"
 
-std::string utils::daytime_(){
+std::string daytime_(){
   time_t rawtime;
   struct tm * timeinfo;
   char buffer[80];
@@ -14,7 +14,7 @@ std::string utils::daytime_(){
   return time;
 }
 
-unsigned int utils::binary_to_decimal(std::string binary_num){
+unsigned int binary_to_decimal(std::string binary_num){
   unsigned int dec_value = 0;
  
   unsigned int base = 1;
@@ -28,7 +28,7 @@ unsigned int utils::binary_to_decimal(std::string binary_num){
   return dec_value;
 }
 
-std::string utils::base_64_encode(std::string input){
+std::string base_64_encode(std::string input){
   
   std::vector<char> base64_lookup = {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
@@ -62,7 +62,7 @@ std::string utils::base_64_encode(std::string input){
   return output;
 }
 
-std::string utils::generate_ws_key(std::string ws_client_key){
+std::string generate_ws_key(std::string ws_client_key){
   
   std::string magic_ws_string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   std::string concatenated_string = ws_client_key + magic_ws_string;
@@ -76,7 +76,7 @@ std::string utils::generate_ws_key(std::string ws_client_key){
   return base_64_encode(input);
 }
 
-std::string utils::read_from_file(std::string filepath, std::string filename){
+std::string read_from_file(std::string filepath, std::string filename){
   std::streampos size;
   char * memblock;
   std::string output;

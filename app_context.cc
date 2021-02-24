@@ -16,7 +16,6 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
                     std::unique_ptr<websocket_request_context> ws_req,
                     std::unique_ptr<websocket_response_context> ws_res,
                     std::unique_ptr<i_json_util_context> juc,
-                    std::unique_ptr<utils> uc,
                     std::unique_ptr<route_manager> rm)
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
@@ -28,8 +27,6 @@ void app::configure(std::unique_ptr<tcp_handler> http_ioc,
   ws_res_ = std::move(ws_res);
   if (juc)
     juc_ = std::move(juc);
-  if (uc)
-    uc_ = std::move(uc);
   if (rm)
     rm_ = std::move(rm);
   return;
@@ -39,8 +36,8 @@ void app::run(int thread_number)
 {
   cm_ = std::make_unique<cache_manager<t_cache<std::string, std::string>>>(5);
   dbm_ = std::make_unique<db_manager<pg_connector>>(thread_number); 
-  //executor_ = std::make_unique<event_queue<std::function<void()>>>(4000);
   sm_ = std::make_unique<strand_manager<event_queue<std::function<void()>>>>(4000);
+  lg_ = std::make_unique<logger>("server.log");
   if (ioc_)
   {
     thread_pool_.reserve(thread_number - 1);

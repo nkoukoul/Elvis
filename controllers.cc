@@ -39,10 +39,10 @@ void file_get_controller::do_stuff(
   std::string controller_data = cache->operator[](filename);
   if (controller_data.empty())
   {
-    controller_data = ac->uc_->read_from_file("", filename);
+    controller_data = read_from_file("", filename);
     cache->insert(std::make_pair(filename, controller_data));
   }
-  deserialized_input_data["controller_data"] = ac->uc_->read_from_file("", filename);
+  deserialized_input_data["controller_data"] = read_from_file("", filename);
 }
 
 // route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
@@ -62,7 +62,7 @@ void file_post_controller::do_stuff(
   fm->insert_model(ac);
   auto cache = ac->cm_->access_cache<t_cache<std::string, std::string>>();
   cache->insert(std::make_pair(fm->filename_.get(),
-                               std::move(ac->uc_->read_from_file("", fm->filename_.get()))));
+                               std::move(read_from_file("", fm->filename_.get()))));
   cache->state();
 }
 
@@ -73,7 +73,7 @@ void trigger_post_controller::do_stuff(
 {
   // this is json data so further deserialization is needed
   std::unordered_map<std::string, std::string> input_args =
-      {{"data", ac->uc_->read_from_file("", "index.html")}, {"Connection", "open"}};
+      {{"data", read_from_file("", "index.html")}, {"Connection", "open"}};
   for (auto fd : ac->broadcast_fd_list)
   {
 

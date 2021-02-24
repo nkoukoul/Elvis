@@ -6,5 +6,6 @@ server
 *.html
 *.pp
 *.te
+*.js
 /triggers
 TAGS

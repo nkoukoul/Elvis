@@ -15,10 +15,11 @@
 #include "request_context.h"
 #include "route_manager.h"
 #include "json_utils.h"
-#include "utils.h"
 #include "response_context.h"
 #include "cache.h"
 #include "db_connector.h"
+#include "utils.h"
+#include "logger.h"
 
 class app
 {
@@ -38,12 +39,10 @@ public:
                  std::unique_ptr<websocket_request_context> ws_req = nullptr,
                  std::unique_ptr<websocket_response_context> ws_res = nullptr,
                  std::unique_ptr<i_json_util_context> juc = nullptr,
-                 std::unique_ptr<utils> uc = nullptr,
                  std::unique_ptr<route_manager> rm = nullptr);
 
   void run(int thread_number);
 
-  //std::unique_ptr<i_event_queue> executor_;
   std::unique_ptr<i_strand_manager> sm_;
   std::unique_ptr<tcp_handler> ioc_;
   std::unique_ptr<http_request_context> http_req_;
@@ -51,10 +50,10 @@ public:
   std::unique_ptr<websocket_request_context> ws_req_;
   std::unique_ptr<websocket_response_context> ws_res_;
   std::unique_ptr<i_json_util_context> juc_;
-  std::unique_ptr<utils> uc_;
   std::unique_ptr<route_manager> rm_;
   std::unique_ptr<i_db_manager> dbm_;
   std::unique_ptr<i_cache_manager> cm_;
+  std::unique_ptr<i_logger> lg_;
   static std::mutex app_mutex_;
   std::mutex db_lock_;
   std::vector<int> broadcast_fd_list;

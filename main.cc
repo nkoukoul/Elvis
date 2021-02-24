@@ -43,7 +43,6 @@ int main(int argc, char * argv[])
         std::move(std::make_unique<websocket_request_context>(my_app)),
         std::move(std::make_unique<websocket_response_context>(my_app)), 
 		    std::move(std::make_unique<json_util_context>()),
-		    std::move(std::make_unique<utils>()),  
 		    std::move(rm));
   
   std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";

@@ -10,6 +10,7 @@
 #include "app_context.h"
 #include "io_context.h"
 
+
 http_response_creator::http_response_creator(app *application_context) : application_context_(application_context) {}
 
 void http_response_creator::create_response(std::shared_ptr<client_context> c_ctx) const
@@ -26,7 +27,7 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
   {
     //wsconnection
     status = "101 Switching Protocols";
-    sec_websocket_key = application_context_->uc_->generate_ws_key(c_ctx->http_headers_["Sec-WebSocket-Key"]);
+    sec_websocket_key = generate_ws_key(c_ctx->http_headers_["Sec-WebSocket-Key"]);
     c_ctx->close_connection_ = false;
     c_ctx->is_websocket_ = true;
     c_ctx->handshake_completed_ = false;
@@ -50,7 +51,7 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
 
   c_ctx->http_response_.reserve(controller_data.size() + 1024);
   c_ctx->http_response_ += "HTTP/1.1 " + status + "\r\n";
-  c_ctx->http_response_ += "Date: " + application_context_->uc_->daytime_() + "\r\n";
+  c_ctx->http_response_ += "Date: " + daytime_() + "\r\n";
   if (c_ctx->is_websocket_)
   {
     c_ctx->http_response_ += "Upgrade: websocket\r\n";
