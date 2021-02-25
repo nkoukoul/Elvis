@@ -30,6 +30,8 @@ public:
   bool close_connection_;
   bool is_websocket_;
   bool handshake_completed_;
+  size_t http_bytes_send_;
+  size_t websocket_bytes_send_;
   std::string http_message_;
   std::string http_response_;
   std::string websocket_message_;

@@ -202,11 +202,30 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
   int bytes_write;
   if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
   {
-    bytes_write = write(c_ctx->client_socket_, c_ctx->websocket_response_.c_str(), c_ctx->websocket_response_.size());
+    size_t bytes_to_send;
+    if (MAXBUF > (c_ctx->websocket_response_.size() - c_ctx->websocket_bytes_send_))
+    {
+      bytes_to_send = c_ctx->websocket_response_.size() - c_ctx->websocket_bytes_send_;
+    }
+    else
+    {
+      bytes_to_send = MAXBUF;
+    }
+    bytes_write = write(c_ctx->client_socket_, c_ctx->websocket_response_.c_str() + c_ctx->websocket_bytes_send_, bytes_to_send);
   }
   else
   {
-    bytes_write = write(c_ctx->client_socket_, c_ctx->http_response_.c_str(), c_ctx->http_response_.size());
+    size_t bytes_to_send;
+    if (MAXBUF > (c_ctx->http_response_.size() - c_ctx->http_bytes_send_))
+    {
+      bytes_to_send = c_ctx->http_response_.size() - c_ctx->http_bytes_send_;
+    }
+    else
+    {
+      bytes_to_send = MAXBUF;
+    }
+    
+    bytes_write = write(c_ctx->client_socket_, c_ctx->http_response_.c_str() + c_ctx->http_bytes_send_, bytes_to_send);
   }
   
   // Client closed connection
@@ -236,13 +255,37 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
     return;
   }
 
-  //close socket
+  // Check if we need to transfer more data
+  if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
+  {
+    c_ctx->websocket_bytes_send_ += bytes_write;
+  }
+  else
+  {
+    c_ctx->http_bytes_send_ += bytes_write;
+  }
+  
+  if ((!c_ctx->is_websocket_ && c_ctx->http_bytes_send_ < c_ctx->http_response_.size()) ||
+      (c_ctx->is_websocket_ && c_ctx->handshake_completed_ && c_ctx->websocket_bytes_send_ < c_ctx->websocket_response_.size()))
+  {
+    executor->produce_event(
+        std::move(
+            std::bind(
+                &io_context::do_write,
+                ac_->ioc_.get(),
+                c_ctx)));
+    return;
+  }
+
+  // Check if socket should close
   if (c_ctx->close_connection_)
   {
     close(c_ctx->client_socket_);
     return;
   }
-  else if (c_ctx->is_websocket_)
+
+  // if socket is still open with http keep-alive or ws read again
+  if (c_ctx->is_websocket_)
   {
     if (!c_ctx->handshake_completed_)
     {
@@ -252,8 +295,14 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
     c_ctx->websocket_message_.clear();
     c_ctx->websocket_data_.clear();
     c_ctx->websocket_response_.clear();
+    c_ctx->websocket_bytes_send_ = 0;
   }
-  // if socket is still open with http keep-alive or ws read again
+  else
+  {
+    c_ctx->http_message_.clear();
+  }
+  
+
   executor->produce_event(
       std::move(
           std::bind(

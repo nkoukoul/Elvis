@@ -80,6 +80,8 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
   {
     c_ctx->http_response_ += controller_data + "\r\n";
   }
+
+  c_ctx->http_bytes_send_ = 0;
   auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
   executor->produce_event(
       std::move(
