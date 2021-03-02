@@ -1,4 +1,8 @@
 #include "utils.h"
+#include <cryptopp/cryptlib.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/base64.h>
 
 std::string daytime_(){
   time_t rawtime;
@@ -66,14 +70,13 @@ std::string generate_ws_key(std::string ws_client_key){
   
   std::string magic_ws_string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   std::string concatenated_string = ws_client_key + magic_ws_string;
-
-  unsigned char hash[SHA_DIGEST_LENGTH];
-  SHA1((unsigned char*)concatenated_string.c_str(), concatenated_string.size(), hash);
-  std::string input;
-  for (int i = 0; i < SHA_DIGEST_LENGTH; i++){
-    input += (char)hash[i];
-  }
-  return base_64_encode(input);
+  std::string digest, output;
+  CryptoPP::SHA1 hash;
+  hash.Update((const byte*)concatenated_string.data(), concatenated_string.size());
+  digest.resize(hash.DigestSize());
+  hash.Final((byte*)&digest[0]);
+  CryptoPP::StringSource(digest, true, new CryptoPP::Base64Encoder(new CryptoPP::StringSink(output)));
+  return output.substr(0, output.size() - 1);
 }
 
 std::string read_from_file(std::string filepath, std::string filename){

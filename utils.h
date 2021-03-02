@@ -5,7 +5,6 @@
 #include <fstream>
 #include <bitset>
 #include <vector>
-#include <openssl/sha.h>
 
 std::string daytime_();
 unsigned int binary_to_decimal(std::string binary_num);
