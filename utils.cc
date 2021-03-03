@@ -104,7 +104,54 @@ std::string read_from_file(std::string filepath, std::string filename){
   return output;
 }
 
-std::string jwt_encode(std::string user_name)
+bool jwt_verify(std::string jwt)
+{
+  std::string secret = "test1234";
+  std::size_t dot_index = jwt.find_first_of(".");
+  std::string encoded_header;
+  if (dot_index != std::string::npos)
+  {
+    encoded_header = jwt.substr(0, dot_index);
+  }
+  else
+  {
+    return false;
+  }
+  std::string header;
+  CryptoPP::StringSource(encoded_header, true, new CryptoPP::Base64URLDecoder(new CryptoPP::StringSink(header)));
+  std::size_t second_dot_index = jwt.substr(dot_index + 1).find_first_of(".");  
+  std::string encoded_payload;
+  if (dot_index != std::string::npos)
+  {
+    encoded_payload = jwt.substr(dot_index + 1, second_dot_index);
+  }
+  else
+  {
+    return false;
+  }
+  std::string payload;
+  CryptoPP::StringSource(encoded_payload, true, new CryptoPP::Base64URLDecoder(new CryptoPP::StringSink(payload)));
+  std::string encoded_signature = jwt.substr(dot_index + second_dot_index + 2);
+  std::string hmac_signature;
+  std::string signature = encoded_header + "." + encoded_payload;
+  CryptoPP::StringSource(encoded_signature, true, new CryptoPP::Base64URLDecoder(new CryptoPP::StringSink(hmac_signature)));
+  try
+  {
+    CryptoPP::HMAC<CryptoPP::SHA256> hmac((const byte*)secret.data(), secret.size());
+    const int flags = CryptoPP::HashVerificationFilter::THROW_EXCEPTION | CryptoPP::HashVerificationFilter::HASH_AT_END;    
+    CryptoPP::StringSource(signature + hmac_signature, true, 
+        new CryptoPP::HashVerificationFilter(hmac, NULL, flags)
+    ); // StringSource
+
+    return true;
+  }
+  catch(const CryptoPP::Exception& e)
+  {
+    return false;
+  } 
+}
+
+std::string jwt_sign(std::string user_name)
 {
   std::string secret = "test1234";
   std::string header = R"({"alg": "HS256", "typ": "JWT"})";
