@@ -34,7 +34,7 @@ int main(int argc, char * argv[])
   rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));
   rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
   rm->set_route("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
-  
+  rm->set_route("/login", "POST", std::move(std::make_unique<user_post_controller>()));
   //Application context is injected with the http request and response handler, 
   //the websocket request and response handler the route manager and json/utils
   my_app->configure(std::move(tcp_server),

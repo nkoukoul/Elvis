@@ -187,3 +187,20 @@ std::string jwt_sign(std::string user_name)
   std::string jwt = encoded_header + "." + encoded_payload + "." + encoded_signature;
   return jwt;
 }
+
+std::string generate_password_hash(std::string password)
+{
+  std::string digest;
+  CryptoPP::SHA1 hash;
+  hash.Update((const byte*)password.data(), password.size());
+  digest.resize(hash.DigestSize());
+  hash.Final((byte*)&digest[0]);
+  return digest;
+}
+
+bool verify_password_hash(std::string password, std::string digest)
+{
+  CryptoPP::SHA1 hash;
+  hash.Update((const byte*)password.data(), password.size());
+  return hash.Verify((const byte*)digest.data());
+}

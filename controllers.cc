@@ -23,10 +23,7 @@ void i_controller::run(std::shared_ptr<client_context> c_ctx, app *ac)
 }
 
 //route is /file/{filename}
-void file_get_controller::do_stuff(
-    std::unordered_map<std::string,
-                       std::string> &deserialized_input_data,
-    app *ac)
+void file_get_controller::do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac)
 {
   //check for file existense should be added
   std::size_t index = deserialized_input_data["url"].find_last_of("/");
@@ -42,22 +39,17 @@ void file_get_controller::do_stuff(
     controller_data = read_from_file("", filename);
     cache->insert(std::make_pair(filename, controller_data));
   }
-  deserialized_input_data["controller_data"] = read_from_file("", filename);
+  deserialized_input_data["controller_data"] = controller_data;
 }
 
 // route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
 // used to refresh or add to cache content
-void file_post_controller::do_stuff(
-    std::unordered_map<std::string,
-                       std::string> &deserialized_input_data,
-    app *ac)
+void file_post_controller::do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac)
 {
-  //eg model is {"filename": "test.txt",  "md5sum_": "5f7f11f4b89befa92c9451ffa5c81184"}
-  auto fm = std::make_unique<file_model>();
   // this is json data so further deserialization is needed
-  auto model = ac->juc_->do_deserialize(std::move(deserialized_input_data["data"])).front();
-  fm->filename_.set(model["filename"]);
-  fm->md5sum_.set(model["md5sum"]);
+  auto input = ac->juc_->do_deserialize(std::move(deserialized_input_data["data"])).front();
+  //eg input data is {"filename": "test.txt",  "md5sum_": "5f7f11f4b89befa92c9451ffa5c81184"}
+  auto fm = std::make_unique<file_model>(input["filename"], input["md5sum"]);
   //fm->repr();
   fm->insert_model(ac);
   auto cache = ac->cm_->access_cache<t_cache<std::string, std::string>>();
@@ -67,9 +59,7 @@ void file_post_controller::do_stuff(
 }
 
 // http request is used to trigger a broadcast to all the ws clients
-void trigger_post_controller::do_stuff(
-    std::unordered_map<std::string, std::string> &deserialized_input_data,
-    app *ac)
+void trigger_post_controller::do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac)
 {
   // this is json data so further deserialization is needed
   std::unordered_map<std::string, std::string> input_args =
@@ -85,5 +75,18 @@ void trigger_post_controller::do_stuff(
     //         fd_pair.first,
     //         input_args,
     //         executor)));
+  }
+}
+
+void user_post_controller::do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac)
+{
+  auto input = ac->juc_->do_deserialize(std::move(deserialized_input_data["data"])).front();
+  //eg input data is {"username": "test",  "password": "test"}
+  auto user = std::make_unique<user_model>();
+  user->username_.set(input["username"]);
+  user->retrieve_model(ac);
+  if (verify_password_hash(input["password"], user->password_.get()))
+  {
+    deserialized_input_data["controller_data"] = jwt_sign(user->username_.get());
   }
 }
