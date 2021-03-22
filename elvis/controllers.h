@@ -13,7 +13,7 @@
 #include <string>
 #include <functional>
 #include <memory>
-#include "event_queue.h"
+
 
 class app;
 namespace elvis::io_context { class client_context; }
@@ -28,33 +28,4 @@ public:
   virtual void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) = 0;
 };
 
-class file_get_controller : public i_controller
-{
-public:
-  file_get_controller() = default;
-
-  void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
-};
-
-class file_post_controller : public i_controller
-{
-public:
-  file_post_controller() = default;
-
-  void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
-};
-
-class trigger_post_controller : public i_controller
-{
-public:
-  trigger_post_controller() = default;
-  void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
-};
-
-class user_post_controller : public i_controller
-{
-public:
-  user_post_controller() = default;
-  void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
-};
 #endif //CONTROLLERS_H

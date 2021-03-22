@@ -1,12 +1,4 @@
-//
-// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
-//
-// Distributed under the MIT License (See accompanying file LICENSE.md)
-//
-// repository: https://github.com/nkoukoul/Elvis
-//
-
-#include "models.h"
+#include "my_models.h"
 
 //model is {"filename": "test.txt",  "md5sum": "5f7f11f4b89befa92c9451ffa5c81184"}
 void file_model::insert_model(app *ac)
