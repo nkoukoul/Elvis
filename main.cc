@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
   app * my_app = app::get_instance();
 
   //Here we create a tcp connection handler
-  std::unique_ptr<tcp_handler> tcp_server = std::make_unique<tcp_handler>
+  std::unique_ptr<elvis::io_context::tcp_handler> tcp_server = std::make_unique<elvis::io_context::tcp_handler>
     (ipaddr, port, my_app);
 
   //Route manager is used to connect endpoints with controllers

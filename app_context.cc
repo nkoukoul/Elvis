@@ -10,7 +10,7 @@
 app *app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
-void app::configure(std::unique_ptr<tcp_handler> http_ioc,
+void app::configure(std::unique_ptr<elvis::io_context::tcp_handler> http_ioc,
                     std::unique_ptr<http_request_context> http_req,
                     std::unique_ptr<http_response_context> http_res,
                     std::unique_ptr<websocket_request_context> ws_req,

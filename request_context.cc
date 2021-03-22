@@ -12,7 +12,7 @@
 
 http_request_parser::http_request_parser(app *application_context) : application_context_(application_context) {}
 
-void http_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
+void http_request_parser::parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
 {
   auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
   std::istringstream ss(c_ctx->http_message_);
@@ -81,7 +81,7 @@ void http_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
 
 websocket_request_parser::websocket_request_parser(app *application_context) : application_context_(application_context) {}
 
-void websocket_request_parser::parse(std::shared_ptr<client_context> c_ctx) const
+void websocket_request_parser::parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
 {
   int fin, rsv1, rsv2, rsv3, opcode, mask, i = 0;
   uint64_t payload_len;

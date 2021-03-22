@@ -15,7 +15,7 @@
 #include "event_queue.h"
 
 class app;
-class client_context;
+namespace elvis::io_context { class client_context; }
 
 class request_parser
 {
@@ -23,7 +23,7 @@ public:
   request_parser() = default;
 
   virtual void parse(
-      std::shared_ptr<client_context> c_ctx) const = 0;
+      std::shared_ptr<elvis::io_context::client_context> c_ctx) const = 0;
 };
 
 class http_request_parser : public request_parser
@@ -31,7 +31,7 @@ class http_request_parser : public request_parser
 public:
   http_request_parser(app *application_context = nullptr);
 
-  void parse(std::shared_ptr<client_context> c_ctx) const override;
+  void parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
 
 private:
   app *application_context_;
@@ -42,7 +42,7 @@ class websocket_request_parser : public request_parser
 public:
   websocket_request_parser(app *application_context = nullptr);
 
-  void parse(std::shared_ptr<client_context> c_ctx) const override;
+  void parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
 
 private:
   app *application_context_;
@@ -58,7 +58,7 @@ public:
     request_ = std::move(request);
   }
 
-  void do_parse(std::shared_ptr<client_context> c_ctx) const
+  void do_parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
   {
     return request_->parse(c_ctx);
   }

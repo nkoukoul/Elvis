@@ -33,7 +33,7 @@ public:
   // This is the static method that controls the access to the singleton
   static app *get_instance();
 
-  void configure(std::unique_ptr<tcp_handler> http_ioc = nullptr,
+  void configure(std::unique_ptr<elvis::io_context::tcp_handler> http_ioc = nullptr,
                  std::unique_ptr<http_request_context> http_req = nullptr,
                  std::unique_ptr<http_response_context> http_res = nullptr,
                  std::unique_ptr<websocket_request_context> ws_req = nullptr,
@@ -44,7 +44,7 @@ public:
   void run(int thread_number);
 
   std::unique_ptr<i_strand_manager> sm_;
-  std::unique_ptr<tcp_handler> ioc_;
+  std::unique_ptr<elvis::io_context::tcp_handler> ioc_;
   std::unique_ptr<http_request_context> http_req_;
   std::unique_ptr<http_response_context> http_res_;
   std::unique_ptr<websocket_request_context> ws_req_;

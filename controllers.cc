@@ -10,7 +10,7 @@
 #include "response_context.h"
 #include "models.h"
 
-void i_controller::run(std::shared_ptr<client_context> c_ctx, app *ac)
+void i_controller::run(std::shared_ptr<elvis::io_context::client_context> c_ctx, app *ac)
 {
   do_stuff(c_ctx->http_headers_, ac);
   auto executor = ac->sm_->access_strand<event_queue<std::function<void()>>>();

@@ -16,14 +16,14 @@
 #include "event_queue.h"
 
 class app;
-class client_context;
+namespace elvis::io_context { class client_context; }
 
 class response_creator
 {
 public:
   response_creator() = default;
 
-  virtual void create_response(std::shared_ptr<client_context> c_ctx) const = 0;
+  virtual void create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const = 0;
 };
 
 class http_response_creator : public response_creator
@@ -31,7 +31,7 @@ class http_response_creator : public response_creator
 public:
   http_response_creator(app *application_context = nullptr);
 
-  void create_response(std::shared_ptr<client_context> c_ctx) const override;
+  void create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
 
 private:
   app *application_context_;
@@ -42,7 +42,7 @@ class websocket_response_creator : public response_creator
 public:
   websocket_response_creator(app *application_context = nullptr);
 
-  void create_response(std::shared_ptr<client_context> c_ctx) const override;
+  void create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
 
 private:
   app *application_context_;
@@ -58,7 +58,7 @@ public:
     response_ = std::move(response);
   }
 
-  void do_create_response(std::shared_ptr<client_context> c_ctx) const
+  void do_create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
   {
     return response_->create_response(c_ctx);
   }

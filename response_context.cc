@@ -13,7 +13,7 @@
 
 http_response_creator::http_response_creator(app *application_context) : application_context_(application_context) {}
 
-void http_response_creator::create_response(std::shared_ptr<client_context> c_ctx) const
+void http_response_creator::create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
 {
   std::string status;
   std::string controller_data;
@@ -86,14 +86,14 @@ void http_response_creator::create_response(std::shared_ptr<client_context> c_ct
   executor->produce_event(
       std::move(
           std::bind(
-              &io_context::do_write,
+              &elvis::io_context::io_context::do_write,
               application_context_->ioc_.get(),
               c_ctx)));
 }
 
 websocket_response_creator::websocket_response_creator(app *application_context) : application_context_(application_context) {}
 
-void websocket_response_creator::create_response(std::shared_ptr<client_context> c_ctx) const
+void websocket_response_creator::create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
 {
   int payload_len;
   bool close_connection = false;
@@ -136,7 +136,7 @@ void websocket_response_creator::create_response(std::shared_ptr<client_context>
   executor->produce_event(
       std::move(
           std::bind(
-              &io_context::do_write,
+              &elvis::io_context::io_context::do_write,
               application_context_->ioc_.get(),
               c_ctx)));
 }

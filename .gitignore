@@ -8,4 +8,7 @@ server
 *.te
 *.js
 /triggers
+/obj
 TAGS
+*.log
+*.game

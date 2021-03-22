@@ -16,14 +16,14 @@
 #include "event_queue.h"
 
 class app;
-class client_context;
+namespace elvis::io_context { class client_context; }
 
 class i_controller
 {
 public:
   i_controller() = default;
   
-  void run(std::shared_ptr<client_context> c_ctx, app *ac);
+  void run(std::shared_ptr<elvis::io_context::client_context> c_ctx, app *ac);
 
   virtual void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) = 0;
 };

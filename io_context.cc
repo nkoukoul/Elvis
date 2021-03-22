@@ -35,7 +35,7 @@ void non_block_socket(int sd)
   }
 }
 
-tcp_handler::tcp_handler(
+elvis::io_context::tcp_handler::tcp_handler(
     std::string ipaddr,
     int port,
     app *ac) : ipaddr_(ipaddr), port_(port), ac_(ac)
@@ -57,13 +57,13 @@ tcp_handler::tcp_handler(
   listen(server_sock_, 5);
 }
 
-void tcp_handler::run()
+void elvis::io_context::tcp_handler::run()
 {
   auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   executor->produce_event(
       std::move(
           std::bind(
-              &tcp_handler::handle_connections,
+              &elvis::io_context::io_context::handle_connections,
               ac_->ioc_.get())));
 
   while (true)
@@ -76,7 +76,7 @@ void tcp_handler::run()
   }
 }
 
-void tcp_handler::handle_connections()
+void elvis::io_context::tcp_handler::handle_connections()
 {
   struct sockaddr_in client;
   socklen_t client_len;
@@ -103,7 +103,7 @@ void tcp_handler::handle_connections()
     executor->produce_event(
         std::move(
             std::bind(
-                &io_context::do_read,
+                &elvis::io_context::io_context::do_read,
                 ac_->ioc_.get(),
                 c_ctx)));
   }
@@ -111,11 +111,11 @@ void tcp_handler::handle_connections()
   executor->produce_event(
       std::move(
           std::bind(
-              &tcp_handler::handle_connections,
+              &elvis::io_context::io_context::handle_connections,
               ac_->ioc_.get())));
 }
 
-void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
+void elvis::io_context::tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
 {
   auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   char inbuffer[MAXBUF], *p = inbuffer;
@@ -157,7 +157,7 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
         executor->produce_event(
             std::move(
                 std::bind(
-                    &io_context::do_read,
+                    &elvis::io_context::io_context::do_read,
                     ac_->ioc_.get(),
                     c_ctx)));
       }
@@ -190,13 +190,13 @@ void tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
     executor->produce_event(
         std::move(
             std::bind(
-                &io_context::do_read,
+                &elvis::io_context::io_context::do_read,
                 ac_->ioc_.get(),
                 c_ctx)));
   }
 }
 
-void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
+void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
 {
   auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   int bytes_write;
@@ -243,7 +243,7 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
       executor->produce_event(
           std::move(
               std::bind(
-                  &io_context::do_write,
+                  &elvis::io_context::io_context::do_write,
                   ac_->ioc_.get(),
                   c_ctx)));
     }
@@ -271,7 +271,7 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
     executor->produce_event(
         std::move(
             std::bind(
-                &io_context::do_write,
+                &elvis::io_context::io_context::do_write,
                 ac_->ioc_.get(),
                 c_ctx)));
     return;
@@ -302,11 +302,10 @@ void tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
     c_ctx->http_message_.clear();
   }
   
-
   executor->produce_event(
       std::move(
           std::bind(
-              &tcp_handler::do_read,
+              &elvis::io_context::io_context::do_read,
               ac_->ioc_.get(),
               c_ctx)));
   return;
