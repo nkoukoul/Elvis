@@ -10,8 +10,8 @@
 #include <thread>
 #include <string>
 #include <functional>
-#include "app_context.h"
-#include "controllers.h"
+#include "elvis/app_context.h"
+#include "elvis/controllers.h"
 
 int main(int argc, char * argv[])
 {
