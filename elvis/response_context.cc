@@ -82,13 +82,8 @@ void http_response_creator::create_response(std::shared_ptr<elvis::io_context::c
   }
 
   c_ctx->http_bytes_send_ = 0;
-  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &elvis::io_context::io_context::do_write,
-              application_context_->ioc_.get(),
-              c_ctx)));
+  std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_write, application_context_->ioc_.get(), c_ctx);
+  application_context_->sm_->produce_event(std::move(event));
 }
 
 websocket_response_creator::websocket_response_creator(app *application_context) : application_context_(application_context) {}
@@ -132,11 +127,6 @@ void websocket_response_creator::create_response(std::shared_ptr<elvis::io_conte
     c_ctx->websocket_response_ += (unsigned char)(c_ctx->websocket_data_.size());
   }
   c_ctx->websocket_response_ += c_ctx->websocket_data_;
-  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &elvis::io_context::io_context::do_write,
-              application_context_->ioc_.get(),
-              c_ctx)));
+  std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_write, application_context_->ioc_.get(), c_ctx);
+  application_context_->sm_->produce_event(std::move(event));
 }

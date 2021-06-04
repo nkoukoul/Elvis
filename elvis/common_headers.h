@@ -17,6 +17,7 @@
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <future>
 #include <functional>
 
 #endif //COMMON_HEADERS_H

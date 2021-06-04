@@ -14,7 +14,7 @@ http_request_parser::http_request_parser(app *application_context) : application
 
 void http_request_parser::parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
 {
-  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
+  //auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
   std::istringstream ss(c_ctx->http_message_);
   std::string request_type, url, protocol, line;
 
@@ -57,25 +57,15 @@ void http_request_parser::parse(std::shared_ptr<elvis::io_context::client_contex
   {
     c_ctx->http_headers_["status"] = "200 OK";
     c_ctx->http_headers_["controller_data"] = "";
-    executor->produce_event(
-        std::move(
-            std::bind(
-                &i_controller::run,
-                ic,
-                c_ctx,
-                application_context_)));
+    std::future<void> event = std::async(std::launch::deferred, &i_controller::run, ic, c_ctx, application_context_);
+    application_context_->sm_->produce_event(std::move(event));
   }
   else
   {
     c_ctx->http_headers_["status"] = "400 Bad Request";
     c_ctx->http_headers_["controller_data"] = "Url or method not supported";
-
-    executor->produce_event(
-        std::move(
-            std::bind(
-                &i_response_context::do_create_response,
-                application_context_->http_res_.get(),
-                c_ctx)));
+    std::future<void> event = std::async(std::launch::deferred, &i_response_context::do_create_response, application_context_->http_res_.get(), c_ctx);
+    application_context_->sm_->produce_event(std::move(event));
   }
 }
 
@@ -133,11 +123,6 @@ void websocket_request_parser::parse(std::shared_ptr<elvis::io_context::client_c
   }
   //echo functionality for now
   c_ctx->websocket_data_ = std::move(unmasked_payload_data);
-  auto executor = application_context_->sm_->access_strand<event_queue<std::function<void()>>>();
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &i_response_context::do_create_response,
-              application_context_->ws_res_.get(),
-              c_ctx)));
+  std::future<void> event = std::async(std::launch::deferred, &i_response_context::do_create_response, application_context_->ws_res_.get(), c_ctx);
+  application_context_->sm_->produce_event(std::move(event));
 }

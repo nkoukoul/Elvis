@@ -59,20 +59,12 @@ elvis::io_context::tcp_handler::tcp_handler(
 
 void elvis::io_context::tcp_handler::run()
 {
-  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &elvis::io_context::io_context::handle_connections,
-              ac_->ioc_.get())));
-
+  std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::handle_connections, ac_->ioc_.get());
+  ac_->sm_->produce_event(std::move(event));
   while (true)
   {
-    if (!executor->empty())
-    {
-      auto async_func = executor->consume_event();
-      async_func();
-    }
+    auto event = ac_->sm_->consume_event();
+    event.wait();
   }
 }
 
@@ -80,7 +72,6 @@ void elvis::io_context::tcp_handler::handle_connections()
 {
   struct sockaddr_in client;
   socklen_t client_len;
-  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   client_len = sizeof client;
   int client_socket = accept(server_sock_, (struct sockaddr *)&client, &client_len);
   if (client_socket <= 0)
@@ -100,24 +91,16 @@ void elvis::io_context::tcp_handler::handle_connections()
     non_block_socket(client_socket);
     std::shared_ptr<client_context> c_ctx = std::make_shared<client_context>();
     c_ctx->client_socket_ = client_socket;
-    executor->produce_event(
-        std::move(
-            std::bind(
-                &elvis::io_context::io_context::do_read,
-                ac_->ioc_.get(),
-                c_ctx)));
+    std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
+    ac_->sm_->produce_event(std::move(event));
   }
-
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &elvis::io_context::io_context::handle_connections,
-              ac_->ioc_.get())));
+  std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::handle_connections, ac_->ioc_.get());
+  ac_->sm_->produce_event(std::move(event));
 }
 
 void elvis::io_context::tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
 {
-  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
+  //auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   char inbuffer[MAXBUF], *p = inbuffer;
   // Read data from client
   int bytes_read = read(c_ctx->client_socket_, inbuffer, MAXBUF);
@@ -135,31 +118,19 @@ void elvis::io_context::tcp_handler::do_read(std::shared_ptr<client_context> c_c
       //if is websocket and has data proceed to parsing
       if (c_ctx->is_websocket_ && c_ctx->websocket_message_.size())
       {
-        executor->produce_event(
-            std::move(
-                std::bind(
-                    &i_request_context::do_parse,
-                    ac_->ws_req_.get(),
-                    c_ctx)));
+        std::future<void> event = std::async(std::launch::deferred, &i_request_context::do_parse, ac_->ws_req_.get(), c_ctx);
+        ac_->sm_->produce_event(std::move(event));
       } //if is http and has data proceed to parsing
       else if (!c_ctx->is_websocket_ && c_ctx->http_message_.size())
       {
         c_ctx->http_message_ += '\n'; //add end of line for getline
-        executor->produce_event(
-            std::move(
-                std::bind(
-                    &i_request_context::do_parse,
-                    ac_->http_req_.get(),
-                    c_ctx)));
+        std::future<void> event = std::async(std::launch::deferred, &i_request_context::do_parse, ac_->http_req_.get(), c_ctx);
+        ac_->sm_->produce_event(std::move(event));
       } // read simply blocked with no data try again
       else
       {
-        executor->produce_event(
-            std::move(
-                std::bind(
-                    &elvis::io_context::io_context::do_read,
-                    ac_->ioc_.get(),
-                    c_ctx)));
+        std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
+        ac_->sm_->produce_event(std::move(event));
       }
       return;
     }
@@ -187,18 +158,13 @@ void elvis::io_context::tcp_handler::do_read(std::shared_ptr<client_context> c_c
       }
     }
     // maybe there some more data so add another read to the queue
-    executor->produce_event(
-        std::move(
-            std::bind(
-                &elvis::io_context::io_context::do_read,
-                ac_->ioc_.get(),
-                c_ctx)));
+    std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
+    ac_->sm_->produce_event(std::move(event));
   }
 }
 
 void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
 {
-  auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
   int bytes_write;
   if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
   {
@@ -240,12 +206,8 @@ void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_
   { // Write block try again
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      executor->produce_event(
-          std::move(
-              std::bind(
-                  &elvis::io_context::io_context::do_write,
-                  ac_->ioc_.get(),
-                  c_ctx)));
+      std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_write, ac_->ioc_.get(), c_ctx);
+      ac_->sm_->produce_event(std::move(event));
     }
     else
     {
@@ -268,15 +230,10 @@ void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_
   if ((!c_ctx->is_websocket_ && c_ctx->http_bytes_send_ < c_ctx->http_response_.size()) ||
       (c_ctx->is_websocket_ && c_ctx->handshake_completed_ && c_ctx->websocket_bytes_send_ < c_ctx->websocket_response_.size()))
   {
-    executor->produce_event(
-        std::move(
-            std::bind(
-                &elvis::io_context::io_context::do_write,
-                ac_->ioc_.get(),
-                c_ctx)));
+    std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_write, ac_->ioc_.get(), c_ctx);
+    ac_->sm_->produce_event(std::move(event));
     return;
   }
-
   // Check if socket should close
   if (c_ctx->close_connection_)
   {
@@ -301,12 +258,7 @@ void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_
   {
     c_ctx->http_message_.clear();
   }
-  
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &elvis::io_context::io_context::do_read,
-              ac_->ioc_.get(),
-              c_ctx)));
+  std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
+  ac_->sm_->produce_event(std::move(event));
   return;
 }

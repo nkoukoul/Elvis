@@ -13,11 +13,6 @@
 void i_controller::run(std::shared_ptr<elvis::io_context::client_context> c_ctx, app *ac)
 {
   do_stuff(c_ctx->http_headers_, ac);
-  auto executor = ac->sm_->access_strand<event_queue<std::function<void()>>>();
-  executor->produce_event(
-      std::move(
-          std::bind(
-              &i_response_context::do_create_response,
-              ac->http_res_.get(),
-              c_ctx)));
+  std::future<void> event = std::async(std::launch::deferred, &i_response_context::do_create_response, ac->http_res_.get(), c_ctx);
+  ac->sm_->produce_event(std::move(event));
 }

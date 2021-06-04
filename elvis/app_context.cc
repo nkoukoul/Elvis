@@ -36,7 +36,7 @@ void app::run(int thread_number)
 {
   cm_ = std::make_unique<cache_manager<t_cache<std::string, std::string>>>(5);
   dbm_ = std::make_unique<db_manager<pg_connector>>(thread_number); 
-  sm_ = std::make_unique<strand_manager<event_queue<std::function<void()>>>>(4000);
+  sm_ = std::make_unique<strand_manager>(10);
   lg_ = std::make_unique<logger>("server.log");
   if (ioc_)
   {
