@@ -118,7 +118,7 @@ bool jwt_verify(std::string jwt)
     return false;
   }
   std::string header;
-  CryptoPP::StringSource(encoded_header, true, new CryptoPP::Base64URLDecoder(new CryptoPP::StringSink(header)));
+  CryptoPP::StringSource(encoded_header, true, new CryptoPP::Base64Decoder(new CryptoPP::StringSink(header)));
   std::size_t second_dot_index = jwt.substr(dot_index + 1).find_first_of(".");  
   std::string encoded_payload;
   if (dot_index != std::string::npos)
@@ -130,11 +130,11 @@ bool jwt_verify(std::string jwt)
     return false;
   }
   std::string payload;
-  CryptoPP::StringSource(encoded_payload, true, new CryptoPP::Base64URLDecoder(new CryptoPP::StringSink(payload)));
+  CryptoPP::StringSource(encoded_payload, true, new CryptoPP::Base64Decoder(new CryptoPP::StringSink(payload)));
   std::string encoded_signature = jwt.substr(dot_index + second_dot_index + 2);
   std::string hmac_signature;
   std::string signature = encoded_header + "." + encoded_payload;
-  CryptoPP::StringSource(encoded_signature, true, new CryptoPP::Base64URLDecoder(new CryptoPP::StringSink(hmac_signature)));
+  CryptoPP::StringSource(encoded_signature, true, new CryptoPP::Base64Decoder(new CryptoPP::StringSink(hmac_signature)));
   try
   {
     CryptoPP::HMAC<CryptoPP::SHA256> hmac((const byte*)secret.data(), secret.size());
@@ -158,14 +158,14 @@ std::string jwt_sign(std::string user_name)
   std::chrono::time_point<std::chrono::system_clock> iat = std::chrono::system_clock::now();
   std::chrono::time_point<std::chrono::system_clock> exp = iat + std::chrono::minutes(5);
   std::string encoded_header;
-  CryptoPP::StringSource(header, true, new CryptoPP::Base64URLEncoder(new CryptoPP::StringSink(encoded_header)));
+  CryptoPP::StringSource(header, true, new CryptoPP::Base64Encoder(new CryptoPP::StringSink(encoded_header)));
   auto iat_t = std::chrono::system_clock::to_time_t(iat);
   auto exp_t = std::chrono::system_clock::to_time_t(exp);
   std::ostringstream os;
   os << R"({"admin": false, "name": ")" << user_name << R"(",  "iat": )" << iat_t << R"(,  "exp": )" << exp_t << "}";
   std::string payload =  os.str();
   std::string encoded_payload;
-  CryptoPP::StringSource(payload, true, new CryptoPP::Base64URLEncoder(new CryptoPP::StringSink(encoded_payload)));
+  CryptoPP::StringSource(payload, true, new CryptoPP::Base64Encoder(new CryptoPP::StringSink(encoded_payload)));
   std::string signature = encoded_header + "." + encoded_payload;
   std::string hmac_signature;
   try
@@ -183,7 +183,7 @@ std::string jwt_sign(std::string user_name)
     return "";
   }
   std::string encoded_signature;
-  CryptoPP::StringSource(hmac_signature, true, new CryptoPP::Base64URLEncoder(new CryptoPP::StringSink(encoded_signature)));
+  CryptoPP::StringSource(hmac_signature, true, new CryptoPP::Base64Encoder(new CryptoPP::StringSink(encoded_signature)));
   std::string jwt = encoded_header + "." + encoded_payload + "." + encoded_signature;
   return jwt;
 }

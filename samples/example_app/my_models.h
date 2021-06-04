@@ -1,8 +1,8 @@
 #ifndef MY_MODELS_H
 #define MY_MODELS_H
 
-#include "../../elvis/app_context.h"
-#include "../../elvis/models.h"
+#include <elvis/app_context.h>
+#include <elvis/models.h>
 
 class file_model : public model
 {

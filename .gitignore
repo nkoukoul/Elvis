@@ -1,14 +1,14 @@
 *~
 app
 server
-*.json
-*.txt
 *.html
 *.pp
 *.te
 *.js
 /triggers
 /obj
+/out
+/.vs
 TAGS
 *.log
 *.game

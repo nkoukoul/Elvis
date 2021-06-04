@@ -1,5 +1,6 @@
 # Elvis
 
-Inside elvis folder is the framework source files and headers.
+Inside elvis folder is the library source files and headers.
 Inside samples folder there is an example application.
-To compile on linux run use makefile.
+CMAKE support has been added. Two third party libraries are used,
+libpqxx version 5.0.1 and cryptopp version 5.6.2

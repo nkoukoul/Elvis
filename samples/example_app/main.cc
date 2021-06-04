@@ -10,7 +10,7 @@
 #include <thread>
 #include <string>
 #include <functional>
-#include "../../elvis/app_context.h"
+#include <elvis/app_context.h>
 #include "my_controllers.h"
 
 int main(int argc, char * argv[])

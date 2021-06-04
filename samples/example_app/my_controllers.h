@@ -5,8 +5,8 @@
 #include <string>
 #include <functional>
 #include <memory>
-#include "../../elvis/controllers.h"
-#include "../../elvis/app_context.h"
+#include <elvis/controllers.h>
+#include <elvis/app_context.h>
 #include "my_models.h"
 
 
