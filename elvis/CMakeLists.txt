@@ -2,10 +2,8 @@
 # project specific logic here.
 #
 cmake_minimum_required (VERSION 3.8)
-#find_package(CryptoPP REQUIRED)
 
 set(CMAKE_CXX_FLAGS "-std=c++17")
-#set(LDFLAGS "-lpthread -lpqxx -lpq -lcryptopp")
 # Add source to this project's executable.
 add_library (Elvis "app_context.cc" "app_context.h" "cache.h" "common_headers.h" "controllers.cc"
 					"controllers.h" "db_connector.h" "event_queue.h" "io_context.cc" "io_context.h"
