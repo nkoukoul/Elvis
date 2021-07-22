@@ -3,12 +3,11 @@
 //route is /file/{filename}
 void file_get_controller::do_stuff(std::unordered_map<std::string, std::string>& deserialized_input_data, app* ac)
 {
-	//check for file existense should be added
 	std::size_t index = deserialized_input_data["url"].find_last_of("/");
 	std::string filename = deserialized_input_data["url"].substr(index + 1);
-	auto fm = std::make_unique<file_model>();
-	fm->filename_.set(filename);
-	fm->retrieve_model(ac);
+	//auto fm = std::make_unique<file_model>();
+	//fm->filename_.set(filename);
+	//fm->retrieve_model(ac);
 	//fm->repr();
 	auto cache = ac->cm_->access_cache<lru_cache<std::string, std::string>>();
 	std::string controller_data = cache->operator[](filename);

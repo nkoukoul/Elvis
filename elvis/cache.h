@@ -158,7 +158,11 @@ public:
         else
         {
             auto value = cache_indexes_[key]->second;
-            insert(key, value);
+            auto cache_index = cache_indexes_[key];
+            cache_.erase(cache_index);
+            cache_.push_front(std::make_pair(key, value));
+            cache_index = cache_.begin();
+            cache_indexes_[key] = cache_index;
             return value;
         }
     }
