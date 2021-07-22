@@ -10,12 +10,12 @@ void file_get_controller::do_stuff(std::unordered_map<std::string, std::string>&
 	fm->filename_.set(filename);
 	fm->retrieve_model(ac);
 	//fm->repr();
-	auto cache = ac->cm_->access_cache<t_cache<std::string, std::string>>();
+	auto cache = ac->cm_->access_cache<lru_cache<std::string, std::string>>();
 	std::string controller_data = cache->operator[](filename);
 	if (controller_data.empty())
 	{
 		controller_data = read_from_file("", filename);
-		cache->insert(std::make_pair(filename, controller_data));
+		cache->insert(filename, controller_data);
 	}
 	deserialized_input_data["controller_data"] = controller_data;
 }
@@ -35,9 +35,8 @@ void file_post_controller::do_stuff(std::unordered_map<std::string, std::string>
 	auto fm = std::make_unique<file_model>(input["filename"], input["md5sum"]);
 	//fm->repr();
 	fm->insert_model(ac);
-	auto cache = ac->cm_->access_cache<t_cache<std::string, std::string>>();
-	cache->insert(std::make_pair(fm->filename_.get(),
-		std::move(read_from_file("", fm->filename_.get()))));
+	auto cache = ac->cm_->access_cache<lru_cache<std::string, std::string>>();
+	cache->insert(fm->filename_.get(), read_from_file("", fm->filename_.get()));
 	cache->state();
 }
 

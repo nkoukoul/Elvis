@@ -23,9 +23,9 @@ class i_cache
 public:
   i_cache() = default;
   
-  void insert(std::pair<K, V> &&k_v_pair)
+  void insert(K key, V value)
   {
-    return static_cast<C *>(this)->insert(k_v_pair);
+    return static_cast<C *>(this)->insert(key, value);
   }
   
   V operator[](K const key)
@@ -45,19 +45,19 @@ class t_cache : public i_cache<t_cache<K, V>, K, V>
 public:
   t_cache(int capacity) : capacity_(capacity){};
 
-  void insert(std::pair<K, V> &&k_v_pair)
+  void insert(K key, V value)
   {
     std::lock_guard<std::mutex> guard(cache_lock_);
     std::chrono::steady_clock::time_point insertion_time = std::chrono::steady_clock::now();
-    if (cache_index_.find(k_v_pair.first) == cache_index_.end())
+    if (cache_index_.find(key) == cache_index_.end())
     {
-      cache_.push_back(std::make_pair(insertion_time, k_v_pair));
-      cache_index_.insert(std::make_pair(k_v_pair.first, cache_.size() - 1));
+      cache_.push_back(std::make_pair(insertion_time, std::make_pair(key, value)));
+      cache_index_.insert(std::make_pair(key, cache_.size() - 1));
     }
     else
     {
-      cache_[cache_index_[k_v_pair.first]].first = insertion_time;
-      cache_[cache_index_[k_v_pair.first]].second.second = k_v_pair.second; 
+      cache_[cache_index_[key]].first = insertion_time;
+      cache_[cache_index_[key]].second.second = value; 
     }
 
     if (cache_.size() > capacity_)
@@ -119,6 +119,78 @@ private:
     return cache_.size();
   }
 };
+
+template <class K, class V>
+class lru_cache : public i_cache<t_cache<K, V>, K, V>
+{
+public:
+    lru_cache(int capacity) : capacity_(capacity) {};
+
+    void insert(K key, V value)
+    {
+        std::lock_guard<std::mutex> guard(cache_lock_);
+        if (cache_indexes_.find(key) != cache_indexes_.end())
+        {
+            auto cache_index = cache_indexes_[key];
+            cache_.erase(cache_index);
+        }
+        else if (size() == capacity_)
+        {
+            auto key_to_remove = cache_.back().first;
+            cache_.pop_back();
+            cache_indexes_.erase(key_to_remove);
+        }
+        
+        cache_.push_front(std::make_pair(key, value));
+        auto cache_index = cache_.begin();
+        cache_indexes_[key] = cache_index;
+        return;
+    }
+
+    V operator[](K const key)
+    {
+        std::lock_guard<std::mutex> guard(cache_lock_);
+        V output;
+        if (cache_indexes_.find(key) == cache_indexes_.end())
+        {
+            return output;
+        }
+        else
+        {
+            auto value = cache_indexes_[key]->second;
+            insert(key, value);
+            return value;
+        }
+    }
+
+    void state()
+    {
+        std::cout << "cache state \n";
+        for (auto elem : cache_)
+        {
+            std::cout << elem.first << ": " << elem.second << " | ";
+
+        }
+        std::cout << "\n";
+    }
+
+private:
+    int capacity_;
+    std::mutex cache_lock_;
+    std::list<std::pair<K, V>> cache_;
+    std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator> cache_indexes_;
+
+    bool empty() const
+    {
+        return cache_.empty();
+    }
+
+    int size() const
+    {
+        return cache_.size();
+    }
+};
+
 
 class i_cache_manager
 {
