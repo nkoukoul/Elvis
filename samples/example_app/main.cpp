@@ -31,11 +31,11 @@ int main(int argc, char* argv[])
 		(ipaddr, port, my_app);
 
 	//Route manager is used to connect endpoints with controllers
-	std::unique_ptr<Elvis::RouteManager> rm = std::make_unique<Elvis::RouteManager>();
-	rm->SetRoute("/file", "GET", std::move(std::make_unique<file_get_controller>()));
-	rm->SetRoute("/file", "POST", std::move(std::make_unique<file_post_controller>()));
-	rm->SetRoute("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
-	rm->SetRoute("/login", "POST", std::move(std::make_unique<user_post_controller>()));
+	std::unique_ptr<Elvis::RouteManager> routeManager = std::make_unique<Elvis::RouteManager>();
+	routeManager->SetRoute("/file", "GET", std::move(std::make_unique<file_get_controller>()));
+	routeManager->SetRoute("/file", "POST", std::move(std::make_unique<FilePostController>()));
+	routeManager->SetRoute("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
+	routeManager->SetRoute("/login", "POST", std::move(std::make_unique<user_post_controller>()));
 	//Application context is injected with the http request and response handler, 
 	//the websocket request and response handler the route manager and json/utils
 	my_app->configure(std::move(tcp_server),
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 		std::move(std::make_unique<Elvis::WebsocketRequestContext>(my_app)),
 		std::move(std::make_unique<Elvis::WebsocketResponseContext>(my_app)),
 		std::move(std::make_unique<Elvis::JSONContext>()),
-		std::move(rm));
+		std::move(routeManager));
 
 	std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";
 

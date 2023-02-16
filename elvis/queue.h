@@ -27,7 +27,7 @@ namespace Elvis
 
     virtual std::future<void> RunTask() = 0;
 
-    virtual void CreateTask(std::future<void> event) = 0;
+    virtual void CreateTask(std::future<void> event, std::string taskType) = 0;
   };
 
   class AsyncQueue final : public IQueue
@@ -37,20 +37,28 @@ namespace Elvis
 
     std::future<void> RunTask() override
     {
-      std::future<void> event;
+      
       std::lock_guard<std::mutex> lock(m_AsyncQueueLock);
       if (!empty())
       {
-        event = std::move(m_AsyncQueue.front());
+        auto pair = std::move(m_AsyncQueue.front());
+#ifdef DEBUG
+        std::cout << "AsyncQueue::RunTask " << pair.second << "\n";
+#endif
         m_AsyncQueue.pop_front();
+        return std::move(pair.first);
       }
+      std::future<void> event;
       return event;
     }
 
-    void CreateTask(std::future<void> event) override
+    void CreateTask(std::future<void> event, std::string taskType) override
     {
       std::lock_guard<std::mutex> lock(m_AsyncQueueLock);
-      m_AsyncQueue.emplace_back(std::move(event));
+#ifdef DEBUG
+      std::cout << "AsyncQueue::CreateTask " << taskType << "\n";
+#endif
+      m_AsyncQueue.emplace_back(std::make_pair(std::move(event), taskType));
       return;
     }
 
@@ -58,7 +66,7 @@ namespace Elvis
 
   private:
     std::mutex m_AsyncQueueLock;
-    std::list<std::future<void>> m_AsyncQueue;
+    std::list<std::pair<std::future<void>, std::string >> m_AsyncQueue;
     const int m_Capacity;
   };
 }

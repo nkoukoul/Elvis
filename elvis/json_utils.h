@@ -59,10 +59,12 @@ namespace Elvis
 			this->m_ValidateStrategy = std::move(validateStrategy);
 		}
 
-		std::list<std::unordered_map<std::string, std::string>> do_deserialize(std::string &&input) const
+		std::list<std::unordered_map<std::string, std::string>> DoDeserialize(std::string &&input) const
 		{
 			if (!m_ValidateStrategy->Validate(input))
+			{
 				return {};
+			}
 			return m_DeserializeStrategy->Deserialize(std::move(input));
 		}
 

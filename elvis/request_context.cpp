@@ -14,7 +14,9 @@ Elvis::HttpRequestParser::HttpRequestParser(app *application_context) : applicat
 
 void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
 {
-  // auto executor = application_context_->m_AsyncQueue->access_strand<event_queue<std::function<void()>>>();
+#ifdef DEBUG
+  std::cout << "HttpRequestParser::Parse: " << c_ctx->m_HttpMessage << "\n";
+#endif
   std::istringstream ss(c_ctx->m_HttpMessage);
   std::string request_type, url, protocol, line;
 
@@ -27,7 +29,7 @@ void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx
   c_ctx->m_HttpHeaders.insert(std::make_pair("url", std::move(url)));
   c_ctx->m_HttpHeaders.insert(std::make_pair("protocol", std::move(protocol)));
 
-  // headers here
+  // headers here, read until first empty line.
   while (line.size() > 1)
   {
     std::getline(ss, line);
@@ -40,11 +42,9 @@ void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx
   {
     std::string deserialized_data;
     // json for post
-    std::getline(ss, line);
-    while (line.size() > 1)
+    while (std::getline(ss, line))
     {
       deserialized_data += line;
-      std::getline(ss, line);
     }
     c_ctx->m_HttpHeaders.insert(std::make_pair("data", std::move(deserialized_data)));
   }
@@ -58,14 +58,14 @@ void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx
     c_ctx->m_HttpHeaders["status"] = "200 OK";
     c_ctx->m_HttpHeaders["controller_data"] = "";
     std::future<void> event = std::async(std::launch::deferred, &Elvis::IController::Run, ic, c_ctx, application_context_);
-    application_context_->m_AsyncQueue->CreateTask(std::move(event));
+    application_context_->m_AsyncQueue->CreateTask(std::move(event), "HttpRequestParser::Parse -> IController::Run");
   }
   else
   {
     c_ctx->m_HttpHeaders["status"] = "400 Bad Request";
     c_ctx->m_HttpHeaders["controller_data"] = "Url or method not supported";
     std::future<void> event = std::async(std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse, application_context_->m_HttpResponseContext.get(), c_ctx);
-    application_context_->m_AsyncQueue->CreateTask(std::move(event));
+    application_context_->m_AsyncQueue->CreateTask(std::move(event), "HttpRequestParser::Parse ->IResponseContext::DoCreateResponse");
   }
 }
 
@@ -117,5 +117,5 @@ void Elvis::WebsocketRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> 
   // echo functionality for now
   c_ctx->m_WSData = std::move(unmasked_payload_data);
   std::future<void> event = std::async(std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse, application_context_->m_WSResponseContext.get(), c_ctx);
-  application_context_->m_AsyncQueue->CreateTask(std::move(event));
+  application_context_->m_AsyncQueue->CreateTask(std::move(event), "");
 }

@@ -12,9 +12,11 @@ server
 TAGS
 *.log
 *.game
-**/CMakeFiles/*
+**/CMakeFiles
 *.cmake
 **/CMakeCache.txt
 .vscode
 **/Makefile
+Makefile
 *.a
+*.txt

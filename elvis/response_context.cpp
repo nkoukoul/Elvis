@@ -18,7 +18,9 @@ void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientCon
   std::string controller_data;
   std::string sec_websocket_key;
   bool close_connection;
-
+#ifdef DEBUG
+  std::cout << "HttpResponseCreator::CreateResponse\n";
+#endif
   if (c_ctx->m_HttpHeaders.find("Connection") != c_ctx->m_HttpHeaders.end() &&
       c_ctx->m_HttpHeaders["Connection"] == "Upgrade" &&
       c_ctx->m_HttpHeaders.find("Upgrade") != c_ctx->m_HttpHeaders.end() &&
@@ -81,7 +83,7 @@ void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientCon
 
   c_ctx->m_HttpBytesSend = 0;
   std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, application_context_->ioc_.get(), c_ctx);
-  application_context_->m_AsyncQueue->CreateTask(std::move(event));
+  application_context_->m_AsyncQueue->CreateTask(std::move(event), "HttpResponseCreator::CreateResponse -> IOContext::DoWrite");
 }
 
 Elvis::WebsocketResponseCreator::WebsocketResponseCreator(app *application_context) : application_context_(application_context) {}
@@ -126,5 +128,5 @@ void Elvis::WebsocketResponseCreator::CreateResponse(std::shared_ptr<Elvis::Clie
   }
   c_ctx->m_WSResponse += c_ctx->m_WSData;
   std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, application_context_->ioc_.get(), c_ctx);
-  application_context_->m_AsyncQueue->CreateTask(std::move(event));
+  application_context_->m_AsyncQueue->CreateTask(std::move(event), "");
 }

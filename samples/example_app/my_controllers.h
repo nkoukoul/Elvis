@@ -16,10 +16,10 @@ public:
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
 };
 
-class file_post_controller : public Elvis::IController
+class FilePostController : public Elvis::IController
 {
 public:
-  file_post_controller() = default;
+  FilePostController() = default;
 
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
 };

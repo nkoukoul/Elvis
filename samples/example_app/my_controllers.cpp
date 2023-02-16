@@ -22,22 +22,21 @@ void file_get_controller::DoStuff(std::unordered_map<std::string, std::string>& 
 
 // route is /file body is {"filename": "test.txt",  "md5": "5f7f11f4b89befa92c9451ffa5c81184"}
 // used to refresh or add to cache content
-void file_post_controller::DoStuff(std::unordered_map<std::string, std::string>& deserialized_input_data, app* ac)
+void FilePostController::DoStuff(std::unordered_map<std::string, std::string>& deserialized_input_data, app* ac)
 {
 	// this is json data so further deserialization is needed
-	auto input = ac->m_JSONContext->do_deserialize(std::move(deserialized_input_data["data"])).front();
+	auto input = ac->m_JSONContext->DoDeserialize(std::move(deserialized_input_data["data"])).front();
 	if (input.empty())
 	{
+		std::cout << "FilePostController: 400 Bad Request\n";
 		deserialized_input_data["status"] = "400 Bad Request";
 		return;
 	}
-	//eg input data is {"filename": "test.txt",  "md5sum_": "5f7f11f4b89befa92c9451ffa5c81184"}
 	auto fm = std::make_unique<FileModel>(input["filename"], input["md5sum"]);
-	//fm->repr();
 	fm->Create(ac);
 	auto cache = ac->m_CacheManager->getCache<Elvis::LRUCache<std::string, std::string>>();
 	cache->Insert(input["filename"], read_from_file("", input["filename"]));
-	cache->State();
+	// cache->State();
 }
 
 // http request is used to trigger a broadcast to all the ws clients
@@ -62,7 +61,7 @@ void trigger_post_controller::DoStuff(std::unordered_map<std::string, std::strin
 
 void user_post_controller::DoStuff(std::unordered_map<std::string, std::string>& deserialized_input_data, app* ac)
 {
-	// auto input = ac->m_JSONContext->do_deserialize(std::move(deserialized_input_data["data"])).front();
+	// auto input = ac->m_JSONContext->DoDeserialize(std::move(deserialized_input_data["data"])).front();
 	// //eg input data is {"username": "test",  "password": "test"}
 	// auto user = std::make_unique<user_model>();
 	// user->username_.set(input["username"]);

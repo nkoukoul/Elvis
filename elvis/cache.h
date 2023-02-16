@@ -131,21 +131,21 @@ namespace Elvis
     void Insert(K key, V value)
     {
       std::lock_guard<std::mutex> guard(m_CacheLock);
-      if (m_Cacheindexes_.find(key) != m_Cacheindexes_.end())
+      if (m_CacheIndexes.find(key) != m_CacheIndexes.end())
       {
-        auto m_Cacheindex = m_Cacheindexes_[key];
-        m_Cache.erase(m_Cacheindex);
+        auto m_CacheIndex = m_CacheIndexes[key];
+        m_Cache.erase(m_CacheIndex);
       }
       else if (size() == m_Capacity)
       {
         auto key_to_remove = m_Cache.back().first;
         m_Cache.pop_back();
-        m_Cacheindexes_.erase(key_to_remove);
+        m_CacheIndexes.erase(key_to_remove);
       }
 
       m_Cache.push_front(std::make_pair(key, value));
-      auto m_Cacheindex = m_Cache.begin();
-      m_Cacheindexes_[key] = m_Cacheindex;
+      auto m_CacheIndex = m_Cache.begin();
+      m_CacheIndexes[key] = m_CacheIndex;
       return;
     }
 
@@ -153,28 +153,30 @@ namespace Elvis
     {
       std::lock_guard<std::mutex> guard(m_CacheLock);
       V output;
-      if (m_Cacheindexes_.find(key) == m_Cacheindexes_.end())
+      if (m_CacheIndexes.find(key) == m_CacheIndexes.end())
       {
         return output;
       }
       else
       {
-        auto value = m_Cacheindexes_[key]->second;
-        auto m_Cacheindex = m_Cacheindexes_[key];
-        m_Cache.erase(m_Cacheindex);
+        auto value = m_CacheIndexes[key]->second;
+        auto m_CacheIndex = m_CacheIndexes[key];
+        m_Cache.erase(m_CacheIndex);
         m_Cache.push_front(std::make_pair(key, value));
-        m_Cacheindex = m_Cache.begin();
-        m_Cacheindexes_[key] = m_Cacheindex;
+        m_CacheIndex = m_Cache.begin();
+        m_CacheIndexes[key] = m_CacheIndex;
         return value;
       }
     }
 
+    // To be used only for debug purposes.
     void State()
     {
-      std::cout << "cache State \n";
+      std::lock_guard<std::mutex> guard(m_CacheLock);
+      std::cout << "Cache State\n";
       for (auto elem : m_Cache)
       {
-        std::cout << elem.first << ": " << elem.second << " | ";
+        std::cout << elem.first << ":\n" << elem.second << " |\n";
       }
       std::cout << "\n";
     }
@@ -183,7 +185,7 @@ namespace Elvis
     int m_Capacity;
     std::mutex m_CacheLock;
     std::list<std::pair<K, V>> m_Cache;
-    std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator> m_Cacheindexes_;
+    std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator> m_CacheIndexes;
 
     bool empty() const
     {

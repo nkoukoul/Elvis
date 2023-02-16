@@ -53,7 +53,11 @@ Elvis::TCPContext::TCPContext(
 	struct sockaddr_in server;
 
 	server_sock_ = socket(AF_INET, SOCK_STREAM, PF_UNSPEC);
+#ifdef __APPLE__
+	non_block_socket(server_sock_);
+#else
 	non_block_with_timeout(server_sock_);
+#endif
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = inet_addr(ipaddr_.c_str());
 	server.sin_port = htons(port_);
@@ -70,7 +74,7 @@ Elvis::TCPContext::TCPContext(
 void Elvis::TCPContext::Run()
 {
 	std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::HandleConnections, ac_->ioc_.get());
-	ac_->m_AsyncQueue->CreateTask(std::move(event));
+	ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::Run -> IOContext::HandleConnections");
 	while (true)
 	{
 		auto event = ac_->m_AsyncQueue->RunTask();
@@ -98,14 +102,17 @@ void Elvis::TCPContext::HandleConnections()
 	}
 	else
 	{
+#ifdef DEBUG
+		std::cout << "Incoming Connection\n";
+#endif
 		non_block_with_timeout(client_socket);
 		std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
 		c_ctx->m_ClientSocket = client_socket;
 		std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
-		ac_->m_AsyncQueue->CreateTask(std::move(event));
+		ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::HandleConnections -> IOContext::DoRead");
 	}
 	std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::HandleConnections, ac_->ioc_.get());
-	ac_->m_AsyncQueue->CreateTask(std::move(event));
+	ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::HandleConnections -> IOContext::HandleConnections");
 }
 
 void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
@@ -114,9 +121,15 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 	char inbuffer[MAXBUF], * p = inbuffer;
 	// Read data from client
 	int bytes_read = read(c_ctx->m_ClientSocket, inbuffer, MAXBUF);
+#ifdef DEBUG
+	std::cout << "TCPContext::DoRead: Incoming Socket byte count " << bytes_read << "\n";
+#endif
 	// Client closed connection
 	if (bytes_read == 0)
 	{
+#ifdef DEBUG
+		std::cout << "TCPContext::DoRead: No bytes closing socket " << bytes_read << "\n";
+#endif
 		close(c_ctx->m_ClientSocket);
 		return;
 	}
@@ -128,25 +141,33 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 			//if is websocket and has data proceed to parsing
 			if (c_ctx->m_IsWebsocketConnection && c_ctx->m_WSMessage.size())
 			{
+				std::cout << "TCPContext::DoRead: Websocket Read Finished\n";
 				std::future<void> event = std::async(std::launch::deferred, &IRequestContext::DoParse, ac_->m_WSRequestContext.get(), c_ctx);
-				ac_->m_AsyncQueue->CreateTask(std::move(event));
+				ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::DoRead -> IRequestContext::DoParse");
 			} //if is http and has data proceed to parsing
 			else if (!c_ctx->m_IsWebsocketConnection && c_ctx->m_HttpMessage.size())
 			{
+#ifdef DEBUG
+				std::cout << "TCPContext::DoRead: HTTP Read Finished\n";
+#endif
 				c_ctx->m_HttpMessage += '\n'; //add end of line for getline
 				std::future<void> event = std::async(std::launch::deferred, &IRequestContext::DoParse, ac_->m_HttpRequestContext.get(), c_ctx);
-				ac_->m_AsyncQueue->CreateTask(std::move(event));
+				ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::DoRead -> IRequestContext::DoParse");
 			} // read simply blocked with no data try again
 			else
 			{
+#ifdef DEBUG
+				std::cout << "TCPContext::DoRead: Read Blocked will try again\n";
+#endif
 				std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
-				ac_->m_AsyncQueue->CreateTask(std::move(event));
+				ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::DoRead -> IOContext::DoRead");
 			}
 			return;
 		}
 		else
 		{
 			// TCP read error
+			std::cout << "TCPContext::DoRead: Read Error\n";
 			close(c_ctx->m_ClientSocket);
 			return;
 		}
@@ -155,6 +176,9 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 	{
 		if (c_ctx->m_IsWebsocketConnection)
 		{
+#ifdef DEBUG
+			std::cout << "TCPContext::DoRead: We have ws data to Read\n";
+#endif
 			for (int i = 0; i < bytes_read; i++)
 			{
 				c_ctx->m_WSMessage += inbuffer[i];
@@ -162,6 +186,9 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 		}
 		else
 		{
+#ifdef DEBUG
+			std::cout << "TCPContext::DoRead: We have http to Read\n";
+#endif
 			for (int i = 0; i < bytes_read; i++)
 			{
 				c_ctx->m_HttpMessage += inbuffer[i];
@@ -169,7 +196,7 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 		}
 		// maybe there some more data so add another read to the queue
 		std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
-		ac_->m_AsyncQueue->CreateTask(std::move(event));
+		ac_->m_AsyncQueue->CreateTask(std::move(event), "TCPContext::DoRead -> IOContext::DoRead");
 	}
 }
 
@@ -192,6 +219,9 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 	else
 	{
 		size_t bytes_to_send;
+#ifdef DEBUG
+		std::cout << "TCPContext::DoWrite: HTTP Response " << c_ctx->m_HttpResponse << "\n with size " << c_ctx->m_HttpResponse.size() << "\n";
+#endif
 		if (MAXBUF > (c_ctx->m_HttpResponse.size() - c_ctx->m_HttpBytesSend))
 		{
 			bytes_to_send = c_ctx->m_HttpResponse.size() - c_ctx->m_HttpBytesSend;
@@ -200,13 +230,15 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 		{
 			bytes_to_send = MAXBUF;
 		}
-
 		bytes_write = write(c_ctx->m_ClientSocket, c_ctx->m_HttpResponse.c_str() + c_ctx->m_HttpBytesSend, bytes_to_send);
 	}
 
 	// Client closed connection
 	if (bytes_write == 0)
 	{
+#ifdef DEBUG
+		std::cout << "TCPContext::DoWrite: No bytes written, Client closed connection, closing connection\n";
+#endif
 		close(c_ctx->m_ClientSocket);
 		return;
 	}
@@ -216,12 +248,16 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 	{ // Write block try again
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
+#ifdef DEBUG
+			std::cout << "TCPContext::DoWrite: Write block will try again\n";
+#endif
 			std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, ac_->ioc_.get(), c_ctx);
-			ac_->m_AsyncQueue->CreateTask(std::move(event));
+			ac_->m_AsyncQueue->CreateTask(std::move(event), "");
 		}
 		else
 		{
 			// TCP write error
+			std::cout << "TCPContext::DoWrite: Write error closing connection\n";
 			close(c_ctx->m_ClientSocket);
 		}
 		return;
@@ -234,6 +270,9 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 	}
 	else
 	{
+#ifdef DEBUG
+		std::cout << "TCPContext::DoWrite: HTTP there is data to write.\n";
+#endif
 		c_ctx->m_HttpBytesSend += bytes_write;
 	}
 
@@ -241,12 +280,15 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 		(c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted && c_ctx->m_WSBytesSend < c_ctx->m_WSResponse.size()))
 	{
 		std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, ac_->ioc_.get(), c_ctx);
-		ac_->m_AsyncQueue->CreateTask(std::move(event));
+		ac_->m_AsyncQueue->CreateTask(std::move(event), "");
 		return;
 	}
 	// Check if socket should close
 	if (c_ctx->m_ShouldCloseConnection)
 	{
+#ifdef DEBUG
+		std::cout << "TCPContext::DoWrite: Socket should close\n";
+#endif
 		close(c_ctx->m_ClientSocket);
 		return;
 	}
@@ -270,6 +312,6 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 		c_ctx->m_HttpBytesSend = 0;
 	}
 	std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
-	ac_->m_AsyncQueue->CreateTask(std::move(event));
+	ac_->m_AsyncQueue->CreateTask(std::move(event), "");
 	return;
 }

@@ -35,11 +35,17 @@ bool Elvis::ValidateStrategy::Validate(std::string const &input) const
 				return false;
 		}
 	}
+#ifdef DEBUG
+	std::cout << "ValidateStrategy::Validate: " << (checker.empty() ? "valid" : "invalid") << "\n";
+#endif
 	return checker.empty();
 }
 
 std::list<std::unordered_map<std::string, std::string>> Elvis::DeserializeStrategy::Deserialize(std::string &&input) const
 {
+#ifdef DEBUG
+	std::cout << "DeserializeStrategy::Deserialize: " << input << "\n";
+#endif
 	std::stack<int> mstack;
 	std::list<std::unordered_map<std::string, std::string>> listOfObjects;
 	std::unordered_map<std::string, std::string> umap;
