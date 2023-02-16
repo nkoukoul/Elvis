@@ -45,7 +45,7 @@ void non_block_with_timeout(int sd)
 		std::cout << "sock timeout failed\n";
 }
 
-elvis::io_context::tcp_handler::tcp_handler(
+Elvis::TCPContext::TCPContext(
 	std::string ipaddr,
 	int port,
 	app* ac) : ipaddr_(ipaddr), port_(port), ac_(ac)
@@ -67,18 +67,18 @@ elvis::io_context::tcp_handler::tcp_handler(
 	listen(server_sock_, 5);
 }
 
-void elvis::io_context::tcp_handler::run()
+void Elvis::TCPContext::Run()
 {
-	std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::handle_connections, ac_->ioc_.get());
-	ac_->sm_->produce_event(std::move(event));
+	std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::HandleConnections, ac_->ioc_.get());
+	ac_->m_AsyncQueue->CreateTask(std::move(event));
 	while (true)
 	{
-		auto event = ac_->sm_->consume_event();
+		auto event = ac_->m_AsyncQueue->RunTask();
 		event.wait();
 	}
 }
 
-void elvis::io_context::tcp_handler::handle_connections()
+void Elvis::TCPContext::HandleConnections()
 {
 	struct sockaddr_in client;
 	socklen_t client_len;
@@ -99,25 +99,25 @@ void elvis::io_context::tcp_handler::handle_connections()
 	else
 	{
 		non_block_with_timeout(client_socket);
-		std::shared_ptr<client_context> c_ctx = std::make_shared<client_context>();
-		c_ctx->client_socket_ = client_socket;
-		std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
-		ac_->sm_->produce_event(std::move(event));
+		std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
+		c_ctx->m_ClientSocket = client_socket;
+		std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
+		ac_->m_AsyncQueue->CreateTask(std::move(event));
 	}
-	std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::handle_connections, ac_->ioc_.get());
-	ac_->sm_->produce_event(std::move(event));
+	std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::HandleConnections, ac_->ioc_.get());
+	ac_->m_AsyncQueue->CreateTask(std::move(event));
 }
 
-void elvis::io_context::tcp_handler::do_read(std::shared_ptr<client_context> c_ctx)
+void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 {
-	//auto executor = ac_->sm_->access_strand<event_queue<std::function<void()>>>();
+	//auto executor = ac_->m_AsyncQueue->access_strand<event_queue<std::function<void()>>>();
 	char inbuffer[MAXBUF], * p = inbuffer;
 	// Read data from client
-	int bytes_read = read(c_ctx->client_socket_, inbuffer, MAXBUF);
+	int bytes_read = read(c_ctx->m_ClientSocket, inbuffer, MAXBUF);
 	// Client closed connection
 	if (bytes_read == 0)
 	{
-		close(c_ctx->client_socket_);
+		close(c_ctx->m_ClientSocket);
 		return;
 	}
 	if (bytes_read < 0)
@@ -126,88 +126,88 @@ void elvis::io_context::tcp_handler::do_read(std::shared_ptr<client_context> c_c
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
 			//if is websocket and has data proceed to parsing
-			if (c_ctx->is_websocket_ && c_ctx->websocket_message_.size())
+			if (c_ctx->m_IsWebsocketConnection && c_ctx->m_WSMessage.size())
 			{
-				std::future<void> event = std::async(std::launch::deferred, &i_request_context::do_parse, ac_->ws_req_.get(), c_ctx);
-				ac_->sm_->produce_event(std::move(event));
+				std::future<void> event = std::async(std::launch::deferred, &IRequestContext::DoParse, ac_->m_WSRequestContext.get(), c_ctx);
+				ac_->m_AsyncQueue->CreateTask(std::move(event));
 			} //if is http and has data proceed to parsing
-			else if (!c_ctx->is_websocket_ && c_ctx->http_message_.size())
+			else if (!c_ctx->m_IsWebsocketConnection && c_ctx->m_HttpMessage.size())
 			{
-				c_ctx->http_message_ += '\n'; //add end of line for getline
-				std::future<void> event = std::async(std::launch::deferred, &i_request_context::do_parse, ac_->http_req_.get(), c_ctx);
-				ac_->sm_->produce_event(std::move(event));
+				c_ctx->m_HttpMessage += '\n'; //add end of line for getline
+				std::future<void> event = std::async(std::launch::deferred, &IRequestContext::DoParse, ac_->m_HttpRequestContext.get(), c_ctx);
+				ac_->m_AsyncQueue->CreateTask(std::move(event));
 			} // read simply blocked with no data try again
 			else
 			{
-				std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
-				ac_->sm_->produce_event(std::move(event));
+				std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
+				ac_->m_AsyncQueue->CreateTask(std::move(event));
 			}
 			return;
 		}
 		else
 		{
 			// TCP read error
-			close(c_ctx->client_socket_);
+			close(c_ctx->m_ClientSocket);
 			return;
 		}
 	}
 	else // We have data to read
 	{
-		if (c_ctx->is_websocket_)
+		if (c_ctx->m_IsWebsocketConnection)
 		{
 			for (int i = 0; i < bytes_read; i++)
 			{
-				c_ctx->websocket_message_ += inbuffer[i];
+				c_ctx->m_WSMessage += inbuffer[i];
 			}
 		}
 		else
 		{
 			for (int i = 0; i < bytes_read; i++)
 			{
-				c_ctx->http_message_ += inbuffer[i];
+				c_ctx->m_HttpMessage += inbuffer[i];
 			}
 		}
 		// maybe there some more data so add another read to the queue
-		std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
-		ac_->sm_->produce_event(std::move(event));
+		std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
+		ac_->m_AsyncQueue->CreateTask(std::move(event));
 	}
 }
 
-void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_ctx)
+void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 {
 	int bytes_write;
-	if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
+	if (c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted)
 	{
 		size_t bytes_to_send;
-		if (MAXBUF > (c_ctx->websocket_response_.size() - c_ctx->websocket_bytes_send_))
+		if (MAXBUF > (c_ctx->m_WSResponse.size() - c_ctx->m_WSBytesSend))
 		{
-			bytes_to_send = c_ctx->websocket_response_.size() - c_ctx->websocket_bytes_send_;
+			bytes_to_send = c_ctx->m_WSResponse.size() - c_ctx->m_WSBytesSend;
 		}
 		else
 		{
 			bytes_to_send = MAXBUF;
 		}
-		bytes_write = write(c_ctx->client_socket_, c_ctx->websocket_response_.c_str() + c_ctx->websocket_bytes_send_, bytes_to_send);
+		bytes_write = write(c_ctx->m_ClientSocket, c_ctx->m_WSResponse.c_str() + c_ctx->m_WSBytesSend, bytes_to_send);
 	}
 	else
 	{
 		size_t bytes_to_send;
-		if (MAXBUF > (c_ctx->http_response_.size() - c_ctx->http_bytes_send_))
+		if (MAXBUF > (c_ctx->m_HttpResponse.size() - c_ctx->m_HttpBytesSend))
 		{
-			bytes_to_send = c_ctx->http_response_.size() - c_ctx->http_bytes_send_;
+			bytes_to_send = c_ctx->m_HttpResponse.size() - c_ctx->m_HttpBytesSend;
 		}
 		else
 		{
 			bytes_to_send = MAXBUF;
 		}
 
-		bytes_write = write(c_ctx->client_socket_, c_ctx->http_response_.c_str() + c_ctx->http_bytes_send_, bytes_to_send);
+		bytes_write = write(c_ctx->m_ClientSocket, c_ctx->m_HttpResponse.c_str() + c_ctx->m_HttpBytesSend, bytes_to_send);
 	}
 
 	// Client closed connection
 	if (bytes_write == 0)
 	{
-		close(c_ctx->client_socket_);
+		close(c_ctx->m_ClientSocket);
 		return;
 	}
 
@@ -216,60 +216,60 @@ void elvis::io_context::tcp_handler::do_write(std::shared_ptr<client_context> c_
 	{ // Write block try again
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 		{
-			std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_write, ac_->ioc_.get(), c_ctx);
-			ac_->sm_->produce_event(std::move(event));
+			std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, ac_->ioc_.get(), c_ctx);
+			ac_->m_AsyncQueue->CreateTask(std::move(event));
 		}
 		else
 		{
 			// TCP write error
-			close(c_ctx->client_socket_);
+			close(c_ctx->m_ClientSocket);
 		}
 		return;
 	}
 
 	// Check if we need to transfer more data
-	if (c_ctx->is_websocket_ && c_ctx->handshake_completed_)
+	if (c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted)
 	{
-		c_ctx->websocket_bytes_send_ += bytes_write;
+		c_ctx->m_WSBytesSend += bytes_write;
 	}
 	else
 	{
-		c_ctx->http_bytes_send_ += bytes_write;
+		c_ctx->m_HttpBytesSend += bytes_write;
 	}
 
-	if ((!c_ctx->is_websocket_ && c_ctx->http_bytes_send_ < c_ctx->http_response_.size()) ||
-		(c_ctx->is_websocket_ && c_ctx->handshake_completed_ && c_ctx->websocket_bytes_send_ < c_ctx->websocket_response_.size()))
+	if ((!c_ctx->m_IsWebsocketConnection && c_ctx->m_HttpBytesSend < c_ctx->m_HttpResponse.size()) ||
+		(c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted && c_ctx->m_WSBytesSend < c_ctx->m_WSResponse.size()))
 	{
-		std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_write, ac_->ioc_.get(), c_ctx);
-		ac_->sm_->produce_event(std::move(event));
+		std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, ac_->ioc_.get(), c_ctx);
+		ac_->m_AsyncQueue->CreateTask(std::move(event));
 		return;
 	}
 	// Check if socket should close
-	if (c_ctx->close_connection_)
+	if (c_ctx->m_ShouldCloseConnection)
 	{
-		close(c_ctx->client_socket_);
+		close(c_ctx->m_ClientSocket);
 		return;
 	}
 
 	// if socket is still open with http keep-alive or ws read again
-	if (c_ctx->is_websocket_)
+	if (c_ctx->m_IsWebsocketConnection)
 	{
-		if (!c_ctx->handshake_completed_)
+		if (!c_ctx->m_IsHandshakeCompleted)
 		{
-			ac_->broadcast_fd_list.push_back(c_ctx->client_socket_);
-			c_ctx->handshake_completed_ = true;
+			ac_->broadcast_fd_list.push_back(c_ctx->m_ClientSocket);
+			c_ctx->m_IsHandshakeCompleted = true;
 		}
-		c_ctx->websocket_message_.clear();
-		c_ctx->websocket_data_.clear();
-		c_ctx->websocket_response_.clear();
-		c_ctx->websocket_bytes_send_ = 0;
+		c_ctx->m_WSMessage.clear();
+		c_ctx->m_WSData.clear();
+		c_ctx->m_WSResponse.clear();
+		c_ctx->m_WSBytesSend = 0;
 	}
 	else
 	{
-		c_ctx->http_message_.clear();
-		c_ctx->http_bytes_send_ = 0;
+		c_ctx->m_HttpMessage.clear();
+		c_ctx->m_HttpBytesSend = 0;
 	}
-	std::future<void> event = std::async(std::launch::deferred, &elvis::io_context::io_context::do_read, ac_->ioc_.get(), c_ctx);
-	ac_->sm_->produce_event(std::move(event));
+	std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoRead, ac_->ioc_.get(), c_ctx);
+	ac_->m_AsyncQueue->CreateTask(std::move(event));
 	return;
 }

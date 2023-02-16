@@ -1,8 +1,8 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
-// Distributed under the MIT License (See accompanying file LICENSE.md) 
-// 
+// Distributed under the MIT License (See accompanying file LICENSE.md)
+//
 // repository: https://github.com/nkoukoul/Elvis
 //
 
@@ -16,71 +16,75 @@
 #include <list>
 #include <memory>
 
-class validate_strategy
+namespace Elvis
 {
-public:
-	validate_strategy() = default;
-	virtual bool validate(std::string const& input) const = 0;
-};
-
-class elvis_validate_strategy : public validate_strategy
-{
-public:
-	bool validate(std::string const& input) const override;
-};
-
-class deserialize_strategy
-{
-public:
-	deserialize_strategy() = default;
-	virtual std::list<std::unordered_map<std::string, std::string>> deserialize(std::string&& input) const = 0;
-};
-
-class elvis_deserialize_strategy : public deserialize_strategy
-{
-public:
-	std::list<std::unordered_map<std::string, std::string>> deserialize(std::string&& input) const override;
-};
-
-class i_json_util_context
-{
-public:
-	i_json_util_context() = default;
-
-	bool do_validate(std::string const& input) const
+	class IValidateStrategy
 	{
-		return vs_->validate(input);
-	}
+	public:
+		virtual ~IValidateStrategy() = default;
+		virtual bool Validate(std::string const &input) const = 0;
+	};
 
-	void set_validate_strategy(std::unique_ptr<validate_strategy> vs)
+	class ValidateStrategy final : public IValidateStrategy
 	{
-		this->vs_ = std::move(vs);
-	}
+	public:
+		virtual bool Validate(std::string const &input) const override;
+	};
 
-	std::list<std::unordered_map<std::string, std::string>> do_deserialize(std::string&& input) const
+	class IDeserializeStrategy
 	{
-		if (!vs_->validate(input)) return {};
-		return ds_->deserialize(std::move(input));
-	}
+	public:
+		virtual ~IDeserializeStrategy() = default;
+		virtual std::list<std::unordered_map<std::string, std::string>> Deserialize(std::string &&input) const = 0;
+	};
 
-	void set_deserialize_strategy(std::unique_ptr<deserialize_strategy> ds)
+	class DeserializeStrategy final : public IDeserializeStrategy
 	{
-		this->ds_ = std::move(ds);
-	}
+	public:
+		std::list<std::unordered_map<std::string, std::string>> Deserialize(std::string &&input) const override;
+	};
 
-protected:
-	std::unique_ptr<deserialize_strategy> ds_;
-	std::unique_ptr<validate_strategy> vs_;
-};
-
-class json_util_context : public i_json_util_context
-{
-public:
-	json_util_context()
+	class IJSONContext
 	{
-		set_deserialize_strategy(std::make_unique<elvis_deserialize_strategy>());//default for now
-		set_validate_strategy(std::make_unique<elvis_validate_strategy>());//default for now
-	}
-};
+	public:
+		virtual ~IJSONContext() = default;
 
-#endif //JSON_UTILS_H
+		bool DoValidate(std::string const &input) const
+		{
+			return m_ValidateStrategy->Validate(input);
+		}
+
+		void setValidateStrategy(std::unique_ptr<IValidateStrategy> validateStrategy)
+		{
+			this->m_ValidateStrategy = std::move(validateStrategy);
+		}
+
+		std::list<std::unordered_map<std::string, std::string>> do_deserialize(std::string &&input) const
+		{
+			if (!m_ValidateStrategy->Validate(input))
+				return {};
+			return m_DeserializeStrategy->Deserialize(std::move(input));
+		}
+
+		void setDeserializeStrategy(std::unique_ptr<IDeserializeStrategy> deserializeStrategy)
+		{
+			this->m_DeserializeStrategy = std::move(deserializeStrategy);
+		}
+
+	protected:
+		std::unique_ptr<IDeserializeStrategy> m_DeserializeStrategy;
+		std::unique_ptr<IValidateStrategy> m_ValidateStrategy;
+	};
+
+	class JSONContext final : public IJSONContext
+	{
+	public:
+		JSONContext()
+		{
+			setDeserializeStrategy(std::make_unique<DeserializeStrategy>()); // default for now
+			setValidateStrategy(std::make_unique<ValidateStrategy>());		 // default for now
+		}
+	};
+}
+
+#endif // JSON_UTILS_H

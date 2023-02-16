@@ -9,32 +9,34 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+#include "utils.h"
 #include <string>
 #include <fstream>
 #include <mutex>
 
-class i_logger
+class ILogger
 {
 public:
-    i_logger() = default;
+    virtual ~ILogger() = default;
 
-    virtual void log(std::string caller, std::string log_level, std::string message) = 0;
+    virtual void Log(std::string caller, std::string log_level, std::string message) = 0;
 };
 
-class logger : public i_logger
+class Logger final : public ILogger
 {
 public:
-    logger(std::string filename):log_file_(filename, std::ios::out|std::ios::binary|std::ios::ate|std::ios::app){};
+    Logger(std::string filename) : m_LogFile(filename, std::ios::out | std::ios::binary | std::ios::ate | std::ios::app){};
 
-    void log(std::string caller, std::string log_level, std::string message) override
+    void Log(std::string caller, std::string log_level, std::string message) override
     {
-        std::lock_guard<std::mutex> guard(log_lock_);
-        log_file_ << daytime_() << " - " << log_level << " - " << caller << " - " << message << std::endl; 
+        std::lock_guard<std::mutex> guard(m_LogLock);
+        m_LogFile << daytime_() << " - " << log_level << " - " << caller << " - " << message << std::endl;
     }
+
 private:
-    std::mutex log_lock_;
-    std::ofstream log_file_;
-    std::string filename_;
+    std::mutex m_LogLock;
+    std::ofstream m_LogFile;
+    std::string Filename;
 };
 
 #endif // LOGGER_H

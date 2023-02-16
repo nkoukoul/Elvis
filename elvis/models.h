@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -17,29 +17,68 @@
 #include <iostream>
 #include "app_context.h"
 
+class IAttribute
+{
+public:
+  virtual ~IAttribute() = default;
+
+  template <class T>
+  T getValue();
+
+  template <class T>
+  void setValue(T value);
+
+  virtual std::string getKey() const = 0;
+  virtual void setKey(std::string key) = 0;
+};
+
 template <class T>
-class attribute
+class Attribute : public IAttribute
 {
-public:
-  attribute() = default;
-  attribute(T attribute) : attribute_(attribute) {}
-  void set(const T attribute) { attribute_ = attribute; }
-  T get() const { return attribute_; }
-
 private:
-  T attribute_;
+  T m_Value;
+  std::string m_Key;
+
+public:
+  T getValue()
+  {
+    return m_Value;
+  }
+
+  void setValue(T value)
+  {
+    m_Value = value;
+  }
+
+  virtual std::string getKey() const override
+  {
+    return m_Key;
+  }
+
+  virtual void setKey(std::string key) override
+  {
+    m_Key = key;
+  }
 };
 
-class model
+template <class T>
+T IAttribute::getValue()
+{
+  return static_cast<Attribute<T> *>(this)->getValue();
+}
+
+template <class T>
+void IAttribute::setValue(T value)
+{
+  static_cast<Attribute<T> *>(this)->setValue(value);
+}
+
+class IModel
 {
 public:
-  model() = default;
-
-  virtual void insert_model(app *ac) = 0;
-
-  virtual void retrieve_model(app *ac) = 0;
-
-  virtual void repr() = 0;
+  virtual void Create(app *ac) const = 0;
+  virtual void Retrieve(app *ac) const = 0;
+  virtual void Display() const = 0;
 };
 
-#endif //MODELS_H
+#endif // MODELS_H

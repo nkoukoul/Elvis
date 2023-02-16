@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -9,80 +9,81 @@
 #ifndef REQUEST_CONTEXT_H
 #define REQUEST_CONTEXT_H
 
+#include "queue.h"
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include "event_queue.h"
 
 class app;
-namespace elvis::io_context { class client_context; }
-
-class request_parser
+namespace Elvis
 {
-public:
-  request_parser() = default;
+  class ClientContext;
 
-  virtual void parse(
-      std::shared_ptr<elvis::io_context::client_context> c_ctx) const = 0;
-};
-
-class http_request_parser : public request_parser
-{
-public:
-  http_request_parser(app *application_context = nullptr);
-
-  void parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
-
-private:
-  app *application_context_;
-};
-
-class websocket_request_parser : public request_parser
-{
-public:
-  websocket_request_parser(app *application_context = nullptr);
-
-  void parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
-
-private:
-  app *application_context_;
-};
-
-class i_request_context
-{
-public:
-  i_request_context() = default;
-
-  void set_request_context(std::unique_ptr<request_parser> request)
+  class IRequestParser
   {
-    request_ = std::move(request);
-  }
+  public:
+    virtual ~IRequestParser() = default;
+    virtual void Parse(
+        std::shared_ptr<ClientContext> c_ctx) const = 0;
+  };
 
-  void do_parse(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
+  class HttpRequestParser final : public IRequestParser
   {
-    return request_->parse(c_ctx);
-  }
+  public:
+    HttpRequestParser(app *application_context = nullptr);
 
-protected:
-  std::unique_ptr<request_parser> request_;
-};
+    virtual void Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
 
-class http_request_context : public i_request_context
-{
-public:
-  http_request_context(app *application_context = nullptr)
+  private:
+    app *application_context_;
+  };
+
+  class WebsocketRequestParser final : public IRequestParser
   {
-    this->request_ = std::make_unique<http_request_parser>(application_context); //default for now
-  }
-};
+  public:
+    WebsocketRequestParser(app *application_context = nullptr);
 
-class websocket_request_context : public i_request_context
-{
-public:
-  websocket_request_context(app *application_context = nullptr)
+    virtual void Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+
+  private:
+    app *application_context_;
+  };
+
+  class IRequestContext
   {
-    this->request_ = std::make_unique<websocket_request_parser>(application_context); //default for now
-  }
-};
+  public:
+    virtual ~IRequestContext() = default;
 
-#endif //REQUEST_CONTEXT_H
+    void setRequestParser(std::unique_ptr<IRequestParser> request)
+    {
+      m_RequestParser = std::move(request);
+    }
+
+    void DoParse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+    {
+      return m_RequestParser->Parse(c_ctx);
+    }
+
+  protected:
+    std::unique_ptr<IRequestParser> m_RequestParser;
+  };
+
+  class HttpRequestContext final : public IRequestContext
+  {
+  public:
+    HttpRequestContext(app *application_context = nullptr)
+    {
+      this->m_RequestParser = std::make_unique<HttpRequestParser>(application_context); // default for now
+    }
+  };
+
+  class WebsocketRequestContext final : public IRequestContext
+  {
+  public:
+    WebsocketRequestContext(app *application_context = nullptr)
+    {
+      this->m_RequestParser = std::make_unique<WebsocketRequestParser>(application_context); // default for now
+    }
+  };
+}
+#endif // REQUEST_CONTEXT_H

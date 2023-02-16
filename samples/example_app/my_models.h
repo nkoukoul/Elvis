@@ -4,37 +4,37 @@
 #include <elvis/app_context.h>
 #include <elvis/models.h>
 
-class file_model : public model
+class FileModel : IModel
 {
+private:
+  std::unique_ptr<Attribute<std::string>> m_Filename;
+  std::unique_ptr<Attribute<std::string>> m_Md5;
 public:
-  file_model() = default;
+  FileModel() = delete;
+  FileModel(std::string filename, std::string md5);
 
-  file_model(std::string filename, std::string md5sum):filename_(filename), md5sum_(md5sum){}
-  void insert_model(app *ac) override;
+  virtual void Create(app *ac) const override;
 
-  void retrieve_model(app *ac) override;
+  virtual void Retrieve(app *ac) const override;
 
-  void repr() override;
-
-  attribute<std::string> filename_;
-  attribute<std::string> md5sum_;
+  virtual void Display() const override;
 };
 
-class user_model : public model
-{
-public:
-  user_model() = default;
+// class user_model : public model
+// {
+// public:
+//   user_model() = default;
 
-  user_model(std::string username, std::string password):username_(username), password_(password){}
+//   user_model(std::string username, std::string password):username_(username), password_(password){}
 
-  void insert_model(app *ac) override;
+//   void insert_model(app *ac) override;
 
-  void retrieve_model(app *ac) override;
+//   void retrieve_model(app *ac) override;
 
-  void repr() override;
+//   void repr() override;
 
-  attribute<std::string> username_;
-  attribute<std::string> password_;
-};
+//   attribute<std::string> username_;
+//   attribute<std::string> password_;
+// };
 
 #endif //MY_MODELS_H

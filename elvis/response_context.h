@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -9,80 +9,84 @@
 #ifndef RESPONSE_CONTEXT_H
 #define RESPONSE_CONTEXT_H
 
+#include "queue.h"
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include <bitset>
-#include "event_queue.h"
 
 class app;
-namespace elvis::io_context { class client_context; }
-
-class response_creator
+namespace Elvis
 {
-public:
-  response_creator() = default;
 
-  virtual void create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const = 0;
-};
+  // Forward Declaration
+  class ClientContext;
 
-class http_response_creator : public response_creator
-{
-public:
-  http_response_creator(app *application_context = nullptr);
-
-  void create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
-
-private:
-  app *application_context_;
-};
-
-class websocket_response_creator : public response_creator
-{
-public:
-  websocket_response_creator(app *application_context = nullptr);
-
-  void create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const override;
-
-private:
-  app *application_context_;
-};
-
-class i_response_context
-{
-public:
-  i_response_context() = default;
-
-  void set_response_context(std::unique_ptr<response_creator> response)
+  class ResponseCreator
   {
-    response_ = std::move(response);
-  }
+  public:
+    virtual ~ResponseCreator() = default;
 
-  void do_create_response(std::shared_ptr<elvis::io_context::client_context> c_ctx) const
+    virtual void CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const = 0;
+  };
+
+  class HttpResponseCreator final : public ResponseCreator
   {
-    return response_->create_response(c_ctx);
-  }
+  public:
+    HttpResponseCreator(app *application_context = nullptr);
 
-protected:
-  std::unique_ptr<response_creator> response_;
-};
+    virtual void CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
 
-class http_response_context : public i_response_context
-{
-public:
-  http_response_context(app *application_context = nullptr)
+  private:
+    app *application_context_;
+  };
+
+  class WebsocketResponseCreator final : public ResponseCreator
   {
-    this->response_ = std::make_unique<http_response_creator>(application_context); //default for now
-  }
-};
+  public:
+    WebsocketResponseCreator(app *application_context = nullptr);
 
-class websocket_response_context : public i_response_context
-{
-public:
-  websocket_response_context(app *application_context = nullptr)
+    virtual void CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+
+  private:
+    app *application_context_;
+  };
+
+  class IResponseContext
   {
-    this->response_ = std::make_unique<websocket_response_creator>(application_context); //default for now
-  }
-};
+  public:
+    virtual ~IResponseContext() = default;
 
-#endif //RESPONSE_CONTEXT_H
+    void setResponseCreator(std::unique_ptr<ResponseCreator> responseCreator)
+    {
+      m_ResponseCreator = std::move(responseCreator);
+    }
+
+    void DoCreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+    {
+      return m_ResponseCreator->CreateResponse(c_ctx);
+    }
+
+  protected:
+    std::unique_ptr<ResponseCreator> m_ResponseCreator;
+  };
+
+  class HttpResponseContext final : public IResponseContext
+  {
+  public:
+    HttpResponseContext(app *application_context = nullptr)
+    {
+      this->m_ResponseCreator = std::make_unique<HttpResponseCreator>(application_context); // default for now
+    }
+  };
+
+  class WebsocketResponseContext final : public IResponseContext
+  {
+  public:
+    WebsocketResponseContext(app *application_context = nullptr)
+    {
+      this->m_ResponseCreator = std::make_unique<WebsocketResponseCreator>(application_context); // default for now
+    }
+  };
+}
+
+#endif // RESPONSE_CONTEXT_H

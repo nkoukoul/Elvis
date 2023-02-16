@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -11,21 +11,22 @@
 
 #include <unordered_map>
 #include <string>
-#include <functional>
 #include <memory>
 
-
 class app;
-namespace elvis::io_context { class client_context; }
 
-class i_controller
+namespace Elvis
 {
-public:
-  i_controller() = default;
-  
-  void run(std::shared_ptr<elvis::io_context::client_context> c_ctx, app *ac);
+  class ClientContext;
 
-  virtual void do_stuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) = 0;
-};
+  class IController
+  {
+  public:
+    virtual ~IController() = default;
 
-#endif //CONTROLLERS_H
+    void Run(std::shared_ptr<Elvis::ClientContext> c_ctx, app *ac);
+
+    virtual void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) = 0;
+  };
+}
+#endif // CONTROLLERS_H

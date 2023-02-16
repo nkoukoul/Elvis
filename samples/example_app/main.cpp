@@ -27,23 +27,23 @@ int main(int argc, char* argv[])
 	app* my_app = app::get_instance();
 
 	//Here we create a tcp connection handler
-	std::unique_ptr<elvis::io_context::tcp_handler> tcp_server = std::make_unique<elvis::io_context::tcp_handler>
+	std::unique_ptr<Elvis::TCPContext> tcp_server = std::make_unique<Elvis::TCPContext>
 		(ipaddr, port, my_app);
 
 	//Route manager is used to connect endpoints with controllers
-	std::unique_ptr<route_manager> rm = std::make_unique<route_manager>();
-	rm->set_route("/file", "GET", std::move(std::make_unique<file_get_controller>()));
-	rm->set_route("/file", "POST", std::move(std::make_unique<file_post_controller>()));
-	rm->set_route("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
-	rm->set_route("/login", "POST", std::move(std::make_unique<user_post_controller>()));
+	std::unique_ptr<Elvis::RouteManager> rm = std::make_unique<Elvis::RouteManager>();
+	rm->SetRoute("/file", "GET", std::move(std::make_unique<file_get_controller>()));
+	rm->SetRoute("/file", "POST", std::move(std::make_unique<file_post_controller>()));
+	rm->SetRoute("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
+	rm->SetRoute("/login", "POST", std::move(std::make_unique<user_post_controller>()));
 	//Application context is injected with the http request and response handler, 
 	//the websocket request and response handler the route manager and json/utils
 	my_app->configure(std::move(tcp_server),
-		std::move(std::make_unique<http_request_context>(my_app)),
-		std::move(std::make_unique<http_response_context>(my_app)),
-		std::move(std::make_unique<websocket_request_context>(my_app)),
-		std::move(std::make_unique<websocket_response_context>(my_app)),
-		std::move(std::make_unique<json_util_context>()),
+		std::move(std::make_unique<Elvis::HttpRequestContext>(my_app)),
+		std::move(std::make_unique<Elvis::HttpResponseContext>(my_app)),
+		std::move(std::make_unique<Elvis::WebsocketRequestContext>(my_app)),
+		std::move(std::make_unique<Elvis::WebsocketResponseContext>(my_app)),
+		std::move(std::make_unique<Elvis::JSONContext>()),
 		std::move(rm));
 
 	std::cout << "server accepting connections on " << ipaddr << ":" << port << "\n";

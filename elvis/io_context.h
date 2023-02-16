@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -18,56 +18,56 @@
 #include <fcntl.h>
 #include "request_context.h"
 #include "response_context.h"
-#include "event_queue.h"
+#include "queue.h"
 
 class app;
 
-namespace elvis::io_context
+namespace Elvis
 {
-  class client_context
+  class ClientContext
   {
   public:
-    client_context() = default;
-    int client_socket_;
-    bool close_connection_;
-    bool is_websocket_;
-    bool handshake_completed_;
-    size_t http_bytes_send_;
-    size_t websocket_bytes_send_;
-    std::string http_message_;
-    std::string http_response_;
-    std::string websocket_message_;
-    std::string websocket_response_;
-    std::unordered_map<std::string, std::string> http_headers_;
-    std::string websocket_data_;
+    ClientContext() = default;
+    int m_ClientSocket;
+    bool m_ShouldCloseConnection;
+    bool m_IsWebsocketConnection;
+    bool m_IsHandshakeCompleted;
+    size_t m_HttpBytesSend;
+    size_t m_WSBytesSend;
+    std::string m_HttpMessage;
+    std::string m_HttpResponse;
+    std::string m_WSMessage;
+    std::string m_WSResponse;
+    std::unordered_map<std::string, std::string> m_HttpHeaders;
+    std::string m_WSData;
   };
 
-  class io_context
+  class IOContext
   {
   public:
-    io_context() = default;
+    virtual ~IOContext() = default;
 
-    virtual void run() = 0;
+    virtual void Run() = 0;
 
-    virtual void handle_connections() = 0;
+    virtual void HandleConnections() = 0;
 
-    virtual void do_read(std::shared_ptr<client_context> c_ctx) = 0;
+    virtual void DoRead(std::shared_ptr<ClientContext> c_ctx) = 0;
 
-    virtual void do_write(std::shared_ptr<client_context> c_ctx) = 0;
+    virtual void DoWrite(std::shared_ptr<ClientContext> c_ctx) = 0;
   };
 
-  class tcp_handler : public io_context
+  class TCPContext final: public IOContext
   {
   public:
-    tcp_handler(std::string ipaddr, int port, app *ac);
+    TCPContext(std::string ipaddr, int port, app *ac);
 
-    void run() override;
+    void Run() override;
 
-    void handle_connections() override;
+    void HandleConnections() override;
 
-    void do_read(std::shared_ptr<client_context> c_ctx) override;
+    void DoRead(std::shared_ptr<ClientContext> c_ctx) override;
 
-    void do_write(std::shared_ptr<client_context> c_ctx) override;
+    void DoWrite(std::shared_ptr<ClientContext> c_ctx) override;
 
     app *ac_;
 
