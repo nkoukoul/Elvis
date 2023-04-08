@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -10,8 +11,8 @@
 #define RESPONSE_CONTEXT_H
 
 #include "queue.h"
-#include <string>
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 class app;
@@ -26,7 +27,8 @@ namespace Elvis
   public:
     virtual ~ResponseCreator() = default;
 
-    virtual void CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const = 0;
+    virtual void
+    CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const = 0;
   };
 
   class HttpResponseCreator final : public ResponseCreator
@@ -34,7 +36,8 @@ namespace Elvis
   public:
     HttpResponseCreator(app *application_context = nullptr);
 
-    virtual void CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+    virtual void
+    CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
 
   private:
     app *application_context_;
@@ -45,7 +48,8 @@ namespace Elvis
   public:
     WebsocketResponseCreator(app *application_context = nullptr);
 
-    virtual void CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+    virtual void
+    CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
 
   private:
     app *application_context_;
@@ -75,7 +79,8 @@ namespace Elvis
   public:
     HttpResponseContext(app *application_context = nullptr)
     {
-      this->m_ResponseCreator = std::make_unique<HttpResponseCreator>(application_context); // default for now
+      this->m_ResponseCreator = std::make_unique<HttpResponseCreator>(
+          application_context); // default for now
     }
   };
 
@@ -84,9 +89,10 @@ namespace Elvis
   public:
     WebsocketResponseContext(app *application_context = nullptr)
     {
-      this->m_ResponseCreator = std::make_unique<WebsocketResponseCreator>(application_context); // default for now
+      this->m_ResponseCreator = std::make_unique<WebsocketResponseCreator>(
+          application_context); // default for now
     }
   };
-}
+} // namespace Elvis
 
 #endif // RESPONSE_CONTEXT_H

@@ -5,7 +5,12 @@ cmake_minimum_required (VERSION 3.8)
 
 set(CMAKE_CXX_FLAGS "-std=c++17")
 option(USE_POSTGRES "Use Postgresql as database" OFF) #OFF by default
-option(USE_CRYPTO "Use CRYPTOCPP as database" OFF) #OFF by default
+option(USE_CRYPTO "Use CRYPTOCPP" OFF) #OFF by default
+option(DEBUG "DEBUG" OFF) #OFF by default
+if (DEBUG)
+	message("DEBUG is on")
+	add_definitions(-DDEBUG)
+endif()
 if(USE_POSTGRES)
 	add_definitions(-DUSE_POSTGRES)
 	if (USE_CRYPTO)
@@ -40,4 +45,5 @@ else()
 endif()
 unset(USE_POSTGRES CACHE)
 unset(USE_CRYPTO CACHE)
+unset(DEBUG CACHE)
 # TODO: Add tests and install targets if needed.

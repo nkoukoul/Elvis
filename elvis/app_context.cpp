@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -13,39 +14,32 @@
 app *app::app_instance_{nullptr};
 std::mutex app::app_mutex_;
 
-void app::configure(std::unique_ptr<Elvis::TCPContext> http_ioc,
-                    std::unique_ptr<Elvis::HttpRequestContext> httpRequestContext,
-                    std::unique_ptr<Elvis::HttpResponseContext> httpResponseContext,
-                    std::unique_ptr<Elvis::WebsocketRequestContext> wsRequestContext,
-                    std::unique_ptr<Elvis::WebsocketResponseContext> wsResponseContext,
-                    std::unique_ptr<Elvis::IJSONContext> jsonContext,
-                    std::unique_ptr<Elvis::RouteManager> routeManager)
+void app::configure(
+    std::string ipaddr, int port,
+    std::shared_ptr<Elvis::ConcurrentQueue> concurrentQueue,
+    std::unique_ptr<Elvis::HttpRequestContext> httpRequestContext,
+    std::unique_ptr<Elvis::WebsocketRequestContext> wsRequestContext,
+    std::unique_ptr<Elvis::IJSONContext> jsonContext)
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
-  if (http_ioc) 
-  {
-    ioc_ = std::move(http_ioc);
-  }
-  m_HttpRequestContext = std::move(httpRequestContext);
-  m_HttpResponseContext = std::move(httpResponseContext);
-  m_WSRequestContext = std::move(wsRequestContext);
-  m_WSResponseContext = std::move(wsResponseContext);
+  m_ConcurrentQueue = concurrentQueue;
+  // Here we create a tcp connection handler
+  ioc_ = std::make_unique<Elvis::TCPContext>(
+      ipaddr, port, std::move(httpRequestContext), std::move(wsRequestContext),
+      m_ConcurrentQueue);
   if (jsonContext)
   {
     m_JSONContext = std::move(jsonContext);
-  }
-  if (routeManager)
-  {
-    m_RouteManager = std::move(routeManager);
   }
   return;
 }
 
 void app::run(int thread_number)
 {
-  m_CacheManager = std::make_unique<Elvis::CacheManager<Elvis::LRUCache<std::string, std::string>>>(3);
+  m_CacheManager = std::make_unique<
+      Elvis::CacheManager<Elvis::LRUCache<std::string, std::string>>>(3);
 #ifdef USE_POSTGRES
-   dbEngine = std::make_unique<Elvis::PGEngine>(thread_number);
+  dbEngine = std::make_unique<Elvis::PGEngine>(thread_number);
 #else
   dbEngine = std::make_unique<Elvis::MockEngine>(thread_number);
 #endif
@@ -54,7 +48,6 @@ void app::run(int thread_number)
 #else
   cryptoManager = std::make_shared<Elvis::MockCryptoManager>();
 #endif
-  m_AsyncQueue = std::make_unique<Elvis::AsyncQueue>(10);
   m_Logger = std::make_unique<Logger>("server.log");
   if (ioc_)
   {
@@ -62,9 +55,8 @@ void app::run(int thread_number)
     for (auto i = thread_number - 1; i > 0; --i)
     {
       thread_pool_.emplace_back(
-          [&http_ioc = (this->ioc_)] {
-            http_ioc->Run();
-          });
+          [&http_ioc = (this->ioc_)]
+          { http_ioc->Run(); });
     }
     ioc_->Run();
   }

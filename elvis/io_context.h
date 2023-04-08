@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -9,18 +10,16 @@
 #ifndef IO_CONTEXT_H
 #define IO_CONTEXT_H
 
-#include <string>
-#include <vector>
-#include <thread>
-#include <unordered_map>
-#include <memory>
-#include <mutex>
-#include <fcntl.h>
+#include "queue.h"
 #include "request_context.h"
 #include "response_context.h"
-#include "queue.h"
-
-class app;
+#include <fcntl.h>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 namespace Elvis
 {
@@ -56,10 +55,13 @@ namespace Elvis
     virtual void DoWrite(std::shared_ptr<ClientContext> c_ctx) = 0;
   };
 
-  class TCPContext final: public IOContext
+  class TCPContext final : public IOContext
   {
   public:
-    TCPContext(std::string ipaddr, int port, app *ac);
+    TCPContext(std::string ipaddr, int port,
+               std::unique_ptr<Elvis::HttpRequestContext> httpRequestContext,
+               std::unique_ptr<Elvis::WebsocketRequestContext> wsRequestContext,
+               std::shared_ptr<Elvis::IQueue> concurrentQueue);
 
     void Run() override;
 
@@ -69,13 +71,14 @@ namespace Elvis
 
     void DoWrite(std::shared_ptr<ClientContext> c_ctx) override;
 
-    app *ac_;
-
   private:
+    std::unique_ptr<Elvis::HttpRequestContext> m_HTTPRequestContext;
+    std::unique_ptr<Elvis::WebsocketRequestContext> m_WSRequestContext;
+    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
     std::string ipaddr_;
     int port_;
     int server_sock_;
     static const int MAXBUF = 1024;
   };
-}
+} // namespace Elvis
 #endif // IO_CONTEXT_H

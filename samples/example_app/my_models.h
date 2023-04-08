@@ -4,11 +4,11 @@
 #include <elvis/app_context.h>
 #include <elvis/models.h>
 
-class FileModel : IModel
-{
+class FileModel : IModel {
 private:
   std::unique_ptr<Attribute<std::string>> m_Filename;
   std::unique_ptr<Attribute<std::string>> m_Md5;
+
 public:
   FileModel() = delete;
   FileModel(std::string filename, std::string md5);
@@ -25,7 +25,8 @@ public:
 // public:
 //   user_model() = default;
 
-//   user_model(std::string username, std::string password):username_(username), password_(password){}
+//   user_model(std::string username, std::string password):username_(username),
+//   password_(password){}
 
 //   void insert_model(app *ac) override;
 
@@ -37,4 +38,4 @@ public:
 //   attribute<std::string> password_;
 // };
 
-#endif //MY_MODELS_H
+#endif // MY_MODELS_H

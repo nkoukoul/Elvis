@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -10,11 +11,12 @@
 #define REQUEST_CONTEXT_H
 
 #include "queue.h"
-#include <string>
+#include "response_context.h"
+#include "route_manager.h"
 #include <memory>
+#include <string>
 #include <unordered_map>
 
-class app;
 namespace Elvis
 {
   class ClientContext;
@@ -23,30 +25,36 @@ namespace Elvis
   {
   public:
     virtual ~IRequestParser() = default;
-    virtual void Parse(
-        std::shared_ptr<ClientContext> c_ctx) const = 0;
+    virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const = 0;
   };
 
   class HttpRequestParser final : public IRequestParser
   {
   public:
-    HttpRequestParser(app *application_context = nullptr);
+    HttpRequestParser(std::unique_ptr<HttpResponseContext> httpResponseContext,
+                      std::shared_ptr<Elvis::IQueue> concurrentQueue,
+                      std::shared_ptr<Elvis::RouteManager> routeManager);
 
-    virtual void Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+    virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const override;
 
   private:
-    app *application_context_;
+    std::unique_ptr<HttpResponseContext> m_HttpResponseContext;
+    std::shared_ptr<RouteManager> m_RouteManager;
+    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
   };
 
   class WebsocketRequestParser final : public IRequestParser
   {
   public:
-    WebsocketRequestParser(app *application_context = nullptr);
+    WebsocketRequestParser(
+        std::unique_ptr<WebsocketResponseContext> wsResponseContext,
+        std::shared_ptr<Elvis::IQueue> concurrentQueue);
 
-    virtual void Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+    virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const override;
 
   private:
-    app *application_context_;
+    std::unique_ptr<WebsocketResponseContext> m_WSResponseContext;
+    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
   };
 
   class IRequestContext
@@ -59,7 +67,7 @@ namespace Elvis
       m_RequestParser = std::move(request);
     }
 
-    void DoParse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+    void DoParse(std::shared_ptr<ClientContext> c_ctx) const
     {
       return m_RequestParser->Parse(c_ctx);
     }
@@ -71,19 +79,26 @@ namespace Elvis
   class HttpRequestContext final : public IRequestContext
   {
   public:
-    HttpRequestContext(app *application_context = nullptr)
+    HttpRequestContext(std::unique_ptr<HttpResponseContext> httpResponseContext,
+                       std::shared_ptr<Elvis::IQueue> concurrentQueue,
+                       std::shared_ptr<Elvis::RouteManager> routeManager)
     {
-      this->m_RequestParser = std::make_unique<HttpRequestParser>(application_context); // default for now
+      this->m_RequestParser = std::make_unique<HttpRequestParser>(
+          std::move(httpResponseContext), concurrentQueue,
+          routeManager); // default for now
     }
   };
 
   class WebsocketRequestContext final : public IRequestContext
   {
   public:
-    WebsocketRequestContext(app *application_context = nullptr)
+    WebsocketRequestContext(
+        std::unique_ptr<WebsocketResponseContext> wsResponseContext,
+        std::shared_ptr<Elvis::IQueue> concurrentQueue)
     {
-      this->m_RequestParser = std::make_unique<WebsocketRequestParser>(application_context); // default for now
+      this->m_RequestParser = std::make_unique<WebsocketRequestParser>(
+          std::move(wsResponseContext), concurrentQueue); // default for now
     }
   };
-}
+} // namespace Elvis
 #endif // REQUEST_CONTEXT_H

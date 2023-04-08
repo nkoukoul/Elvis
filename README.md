@@ -31,10 +31,8 @@ app* my_app = app::get_instance();
 Create routes
 ```
 std::unique_ptr<Elvis::RouteManager> routeManager = std::make_unique<Elvis::RouteManager>();
-	routeManager->SetRoute("/file", "GET", std::move(std::make_unique<file_get_controller>()));
+	routeManager->SetRoute("/file", "GET", std::move(std::make_unique<FileGetController>()));
 	routeManager->SetRoute("/file", "POST", std::move(std::make_unique<FilePostController>()));
-	routeManager->SetRoute("/triggers", "POST", std::move(std::make_unique<trigger_post_controller>()));
-	routeManager->SetRoute("/login", "POST", std::move(std::make_unique<user_post_controller>()));
 ```
 
 Configure app with default JSON, HTTP Req/Res and WS Req/Res context. One can also override the respective abstract classes and provide his own.

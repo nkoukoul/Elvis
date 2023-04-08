@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -30,15 +31,9 @@ namespace Elvis
       return static_cast<C *>(this)->Insert(key, value);
     }
 
-    V operator[](K const key)
-    {
-      return static_cast<C *>(this)->operator[](key);
-    }
+    V operator[](K const key) { return static_cast<C *>(this)->operator[](key); }
 
-    void State()
-    {
-      return static_cast<C *>(this)->State();
-    }
+    void State() { return static_cast<C *>(this)->State(); }
   };
 
   template <class K, class V>
@@ -50,10 +45,12 @@ namespace Elvis
     void Insert(K key, V value)
     {
       std::lock_guard<std::mutex> guard(m_CacheLock);
-      std::chrono::steady_clock::time_point Insertion_time = std::chrono::steady_clock::now();
+      std::chrono::steady_clock::time_point Insertion_time =
+          std::chrono::steady_clock::now();
       if (m_CacheIndex.find(key) == m_CacheIndex.end())
       {
-        m_Cache.push_back(std::make_pair(Insertion_time, std::make_pair(key, value)));
+        m_Cache.push_back(
+            std::make_pair(Insertion_time, std::make_pair(key, value)));
         m_CacheIndex.Insert(std::make_pair(key, m_Cache.size() - 1));
       }
       else
@@ -88,7 +85,8 @@ namespace Elvis
       }
       else
       {
-        std::chrono::steady_clock::time_point update_time = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point update_time =
+            std::chrono::steady_clock::now();
         m_Cache[m_CacheIndex[key]].first = update_time;
         return m_Cache[m_CacheIndex[key]].second.second;
       }
@@ -100,7 +98,9 @@ namespace Elvis
       for (auto it = m_Cache.begin(); it != m_Cache.end(); ++it)
       {
         std::cout << "entry Inserted before: "
-                  << std::chrono::duration_cast<std::chrono::seconds>(end - it->first).count()
+                  << std::chrono::duration_cast<std::chrono::seconds>(end -
+                                                                      it->first)
+                         .count()
                   << " seconds key: " << it->second.first << "\n";
       }
     }
@@ -108,18 +108,13 @@ namespace Elvis
   private:
     int m_Capacity;
     std::mutex m_CacheLock;
-    std::vector<std::pair<std::chrono::steady_clock::time_point, std::pair<K, V>>> m_Cache;
+    std::vector<std::pair<std::chrono::steady_clock::time_point, std::pair<K, V>>>
+        m_Cache;
     std::unordered_map<K, int> m_CacheIndex;
 
-    bool empty() const
-    {
-      return m_Cache.empty();
-    }
+    bool empty() const { return m_Cache.empty(); }
 
-    int size() const
-    {
-      return m_Cache.size();
-    }
+    int size() const { return m_Cache.size(); }
   };
 
   template <class K, class V>
@@ -176,7 +171,8 @@ namespace Elvis
       std::cout << "Cache State\n";
       for (auto elem : m_Cache)
       {
-        std::cout << elem.first << ":\n" << elem.second << " |\n";
+        std::cout << elem.first << ":\n"
+                  << elem.second << " |\n";
       }
       std::cout << "\n";
     }
@@ -185,17 +181,12 @@ namespace Elvis
     int m_Capacity;
     std::mutex m_CacheLock;
     std::list<std::pair<K, V>> m_Cache;
-    std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator> m_CacheIndexes;
+    std::unordered_map<K, typename std::list<std::pair<K, V>>::iterator>
+        m_CacheIndexes;
 
-    bool empty() const
-    {
-      return m_Cache.empty();
-    }
+    bool empty() const { return m_Cache.empty(); }
 
-    int size() const
-    {
-      return m_Cache.size();
-    }
+    int size() const { return m_Cache.size(); }
   };
 
   class ICacheManager
@@ -216,10 +207,7 @@ namespace Elvis
       m_Cache = std::make_unique<CACHE>(m_Cachesize);
     }
 
-    CACHE *getCache()
-    {
-      return m_Cache.get();
-    }
+    CACHE *getCache() { return m_Cache.get(); }
 
   private:
     std::unique_ptr<CACHE> m_Cache;
@@ -230,5 +218,5 @@ namespace Elvis
   {
     return static_cast<CacheManager<ICache> *>(this)->getCache();
   }
-}
+} // namespace Elvis
 #endif // CACHE_H

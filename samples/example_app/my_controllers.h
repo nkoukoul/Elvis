@@ -1,40 +1,52 @@
 #ifndef MY_CONTROLLERS_H
 #define MY_CONTROLLERS_H
 
-#include <unordered_map>
-#include <string>
+#include <elvis/app_context.h>
+#include <elvis/controllers.h>
 #include <functional>
 #include <memory>
-#include <elvis/controllers.h>
-#include <elvis/app_context.h>
+#include <string>
+#include <unordered_map>
 
-class file_get_controller : public Elvis::IController
-{
+class FileGetController : public Elvis::IController {
+private:
+  app *ac;
+
 public:
-  file_get_controller() = default;
+  FileGetController(app *ac);
 
-  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
+  void DoStuff(std::unordered_map<std::string, std::string>
+                   &deserialized_input_data) override;
 };
 
-class FilePostController : public Elvis::IController
-{
-public:
-  FilePostController() = default;
+class FilePostController : public Elvis::IController {
+private:
+  app *ac;
 
-  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
+public:
+  FilePostController(app *ac);
+
+  void DoStuff(std::unordered_map<std::string, std::string>
+                   &deserialized_input_data) override;
 };
 
-class trigger_post_controller : public Elvis::IController
-{
+class trigger_post_controller : public Elvis::IController {
+private:
+  app *ac;
+
 public:
-  trigger_post_controller() = default;
-  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
+  trigger_post_controller(app *ac);
+  void DoStuff(std::unordered_map<std::string, std::string>
+                   &deserialized_input_data) override;
 };
 
-class user_post_controller : public Elvis::IController
-{
+class user_post_controller : public Elvis::IController {
+private:
+  app *ac;
+
 public:
-  user_post_controller() = default;
-  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data, app *ac) override;
+  user_post_controller(app *ac);
+  void DoStuff(std::unordered_map<std::string, std::string>
+                   &deserialized_input_data) override;
 };
-#endif //MY_CONTROLLERS_H
+#endif // MY_CONTROLLERS_H

@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -9,13 +10,13 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-#include <unordered_map>
-#include <string>
-#include <stack>
-#include <vector>
-#include <list>
-#include <iostream>
 #include "app_context.h"
+#include <iostream>
+#include <list>
+#include <stack>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 class IAttribute
 {
@@ -40,25 +41,13 @@ private:
   std::string m_Key;
 
 public:
-  T getValue()
-  {
-    return m_Value;
-  }
+  T getValue() { return m_Value; }
 
-  void setValue(T value)
-  {
-    m_Value = value;
-  }
+  void setValue(T value) { m_Value = value; }
 
-  virtual std::string getKey() const override
-  {
-    return m_Key;
-  }
+  virtual std::string getKey() const override { return m_Key; }
 
-  virtual void setKey(std::string key) override
-  {
-    m_Key = key;
-  }
+  virtual void setKey(std::string key) override { m_Key = key; }
 };
 
 template <class T>

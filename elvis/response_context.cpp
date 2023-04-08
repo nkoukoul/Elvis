@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -10,9 +11,11 @@
 #include "app_context.h"
 #include "io_context.h"
 
-Elvis::HttpResponseCreator::HttpResponseCreator(app *application_context) : application_context_(application_context) {}
+Elvis::HttpResponseCreator::HttpResponseCreator(app *application_context)
+    : application_context_(application_context) {}
 
-void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+void Elvis::HttpResponseCreator::CreateResponse(
+    std::shared_ptr<Elvis::ClientContext> c_ctx) const
 {
   std::string status;
   std::string controller_data;
@@ -28,7 +31,9 @@ void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientCon
   {
     // wsconnection
     status = "101 Switching Protocols";
-    sec_websocket_key = generate_ws_key(c_ctx->m_HttpHeaders["Sec-WebSocket-Key"], application_context_->cryptoManager);
+    sec_websocket_key =
+        generate_ws_key(c_ctx->m_HttpHeaders["Sec-WebSocket-Key"],
+                        application_context_->cryptoManager);
     c_ctx->m_ShouldCloseConnection = false;
     c_ctx->m_IsWebsocketConnection = true;
     c_ctx->m_IsHandshakeCompleted = false;
@@ -57,7 +62,8 @@ void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientCon
   {
     c_ctx->m_HttpResponse += "Upgrade: websocket\r\n";
     c_ctx->m_HttpResponse += "Connection: Upgrade\r\n";
-    c_ctx->m_HttpResponse += "Sec-WebSocket-Accept: " + sec_websocket_key + "\r\n";
+    c_ctx->m_HttpResponse +=
+        "Sec-WebSocket-Accept: " + sec_websocket_key + "\r\n";
   }
   else if (c_ctx->m_ShouldCloseConnection)
   {
@@ -72,7 +78,9 @@ void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientCon
   if (!controller_data.empty())
   {
     c_ctx->m_HttpResponse += "Content-Type: text/html\r\n";
-    c_ctx->m_HttpResponse += "Content-Length: " + std::to_string(controller_data.size() + 2) + "\r\n";
+    c_ctx->m_HttpResponse +=
+        "Content-Length: " + std::to_string(controller_data.size() + 2) +
+        "\r\n";
   }
 
   c_ctx->m_HttpResponse += "\r\n";
@@ -82,13 +90,20 @@ void Elvis::HttpResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientCon
   }
 
   c_ctx->m_HttpBytesSend = 0;
-  std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, application_context_->ioc_.get(), c_ctx);
-  application_context_->m_AsyncQueue->CreateTask(std::move(event), "HttpResponseCreator::CreateResponse -> IOContext::DoWrite");
+  std::future<void> event =
+      std::async(std::launch::deferred, &Elvis::IOContext::DoWrite,
+                 application_context_->ioc_.get(), c_ctx);
+  application_context_->m_ConcurrentQueue->CreateTask(
+      std::move(event),
+      "HttpResponseCreator::CreateResponse -> IOContext::DoWrite");
 }
 
-Elvis::WebsocketResponseCreator::WebsocketResponseCreator(app *application_context) : application_context_(application_context) {}
+Elvis::WebsocketResponseCreator::WebsocketResponseCreator(
+    app *application_context)
+    : application_context_(application_context) {}
 
-void Elvis::WebsocketResponseCreator::CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+void Elvis::WebsocketResponseCreator::CreateResponse(
+    std::shared_ptr<Elvis::ClientContext> c_ctx) const
 {
   int payload_len;
   bool close_connection = false;
@@ -127,6 +142,8 @@ void Elvis::WebsocketResponseCreator::CreateResponse(std::shared_ptr<Elvis::Clie
     c_ctx->m_WSResponse += (unsigned char)(c_ctx->m_WSData.size());
   }
   c_ctx->m_WSResponse += c_ctx->m_WSData;
-  std::future<void> event = std::async(std::launch::deferred, &Elvis::IOContext::DoWrite, application_context_->ioc_.get(), c_ctx);
-  application_context_->m_AsyncQueue->CreateTask(std::move(event), "");
+  std::future<void> event =
+      std::async(std::launch::deferred, &Elvis::IOContext::DoWrite,
+                 application_context_->ioc_.get(), c_ctx);
+  application_context_->m_ConcurrentQueue->CreateTask(std::move(event), "");
 }

@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -7,12 +8,20 @@
 //
 #include "request_context.h"
 #include "io_context.h"
-#include "app_context.h"
 #include <sstream>
 
-Elvis::HttpRequestParser::HttpRequestParser(app *application_context) : application_context_(application_context) {}
+Elvis::HttpRequestParser::HttpRequestParser(
+    std::unique_ptr<Elvis::HttpResponseContext> httpResponseContext,
+    std::shared_ptr<Elvis::IQueue> concurrentQueue,
+    std::shared_ptr<Elvis::RouteManager> routeManager)
+    : m_HttpResponseContext(std::move(httpResponseContext))
+{
+  m_RouteManager = routeManager;
+  m_ConcurrentQueue = concurrentQueue;
+}
 
-void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+void Elvis::HttpRequestParser::Parse(
+    std::shared_ptr<Elvis::ClientContext> c_ctx) const
 {
 #ifdef DEBUG
   std::cout << "HttpRequestParser::Parse: " << c_ctx->m_HttpMessage << "\n";
@@ -25,7 +34,8 @@ void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx
   std::istringstream first_line(line);
   first_line >> request_type >> url >> protocol;
 
-  c_ctx->m_HttpHeaders.insert(std::make_pair("request_type", std::move(request_type)));
+  c_ctx->m_HttpHeaders.insert(
+      std::make_pair("request_type", std::move(request_type)));
   c_ctx->m_HttpHeaders.insert(std::make_pair("url", std::move(url)));
   c_ctx->m_HttpHeaders.insert(std::make_pair("protocol", std::move(protocol)));
 
@@ -35,7 +45,9 @@ void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx
     std::getline(ss, line);
     std::size_t column_index = line.find_first_of(":");
     if (column_index != std::string::npos)
-      c_ctx->m_HttpHeaders.insert(std::make_pair(line.substr(0, column_index), line.substr(column_index + 2, line.size() - 3 - column_index)));
+      c_ctx->m_HttpHeaders.insert(std::make_pair(
+          line.substr(0, column_index),
+          line.substr(column_index + 2, line.size() - 3 - column_index)));
   }
 
   if (c_ctx->m_HttpHeaders["request_type"] == "POST")
@@ -46,32 +58,52 @@ void Elvis::HttpRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx
     {
       deserialized_data += line;
     }
-    c_ctx->m_HttpHeaders.insert(std::make_pair("data", std::move(deserialized_data)));
+    c_ctx->m_HttpHeaders.insert(
+        std::make_pair("data", std::move(deserialized_data)));
   }
 
-  Elvis::IController *ic = application_context_->m_RouteManager->GetController(
-      c_ctx->m_HttpHeaders["url"],
-      c_ctx->m_HttpHeaders["request_type"]);
+  Elvis::IController *ic = m_RouteManager->GetController(
+      c_ctx->m_HttpHeaders["url"], c_ctx->m_HttpHeaders["request_type"]);
 
   if (ic)
   {
     c_ctx->m_HttpHeaders["status"] = "200 OK";
     c_ctx->m_HttpHeaders["controller_data"] = "";
-    std::future<void> event = std::async(std::launch::deferred, &Elvis::IController::Run, ic, c_ctx, application_context_);
-    application_context_->m_AsyncQueue->CreateTask(std::move(event), "HttpRequestParser::Parse -> IController::Run");
+    // std::future<void> task = std::async(std::launch::deferred,
+    // &Elvis::IController::Run, ic, c_ctx, application_context_);
+    // application_context_->m_ConcurrentQueue->CreateTask(std::move(task),
+    // "HttpRequestParser::Parse -> IController::Run");
+    ic->Run(c_ctx);
+    std::future<void> task = std::async(
+        std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse,
+        m_HttpResponseContext.get(), c_ctx);
+    m_ConcurrentQueue->CreateTask(
+        std::move(task),
+        "IController::Run -> IResponseContext::DoCreateResponse");
   }
   else
   {
     c_ctx->m_HttpHeaders["status"] = "400 Bad Request";
     c_ctx->m_HttpHeaders["controller_data"] = "Url or method not supported";
-    std::future<void> event = std::async(std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse, application_context_->m_HttpResponseContext.get(), c_ctx);
-    application_context_->m_AsyncQueue->CreateTask(std::move(event), "HttpRequestParser::Parse ->IResponseContext::DoCreateResponse");
+    std::future<void> task = std::async(
+        std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse,
+        m_HttpResponseContext.get(), c_ctx);
+    m_ConcurrentQueue->CreateTask(
+        std::move(task),
+        "HttpRequestParser::Parse ->IResponseContext::DoCreateResponse");
   }
 }
 
-Elvis::WebsocketRequestParser::WebsocketRequestParser(app *application_context) : application_context_(application_context) {}
+Elvis::WebsocketRequestParser::WebsocketRequestParser(
+    std::unique_ptr<WebsocketResponseContext> wsResponseContext,
+    std::shared_ptr<Elvis::IQueue> concurrentQueue)
+    : m_WSResponseContext(std::move(wsResponseContext))
+{
+  m_ConcurrentQueue = concurrentQueue;
+}
 
-void Elvis::WebsocketRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+void Elvis::WebsocketRequestParser::Parse(
+    std::shared_ptr<Elvis::ClientContext> c_ctx) const
 {
   int fin, rsv1, rsv2, rsv3, opcode, mask, i = 0;
   uint64_t payload_len;
@@ -93,12 +125,21 @@ void Elvis::WebsocketRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> 
   }
   if (payload_len == 126)
   {
-    payload_len = ((uint16_t)c_ctx->m_WSMessage[i] << 8 & 0xff00) + ((uint16_t)c_ctx->m_WSMessage[i + 1] & 0x00ff);
+    payload_len = ((uint16_t)c_ctx->m_WSMessage[i] << 8 & 0xff00) +
+                  ((uint16_t)c_ctx->m_WSMessage[i + 1] & 0x00ff);
     i += 2;
   }
   else if (payload_len == 127)
   {
-    payload_len = ((uint64_t)c_ctx->m_WSMessage[i] << 56 & 0xff00000000000000) + ((uint64_t)c_ctx->m_WSMessage[i + 1] << 48 & 0x00ff000000000000) + ((uint64_t)c_ctx->m_WSMessage[i + 2] << 40 & 0x0000ff0000000000) + ((uint64_t)c_ctx->m_WSMessage[i + 3] << 32 & 0x000000ff00000000) + ((uint64_t)c_ctx->m_WSMessage[i + 4] << 24 & 0x00000000ff000000) + ((uint64_t)c_ctx->m_WSMessage[i + 5] << 16 & 0x0000000000ff0000) + ((uint64_t)c_ctx->m_WSMessage[i + 6] << 8 & 0x000000000000ff00) + ((uint64_t)c_ctx->m_WSMessage[i + 7] & 0x00000000000000ff);
+    payload_len =
+        ((uint64_t)c_ctx->m_WSMessage[i] << 56 & 0xff00000000000000) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 1] << 48 & 0x00ff000000000000) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 2] << 40 & 0x0000ff0000000000) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 3] << 32 & 0x000000ff00000000) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 4] << 24 & 0x00000000ff000000) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 5] << 16 & 0x0000000000ff0000) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 6] << 8 & 0x000000000000ff00) +
+        ((uint64_t)c_ctx->m_WSMessage[i + 7] & 0x00000000000000ff);
     i += 8;
   }
   if (mask == 1)
@@ -116,6 +157,8 @@ void Elvis::WebsocketRequestParser::Parse(std::shared_ptr<Elvis::ClientContext> 
   }
   // echo functionality for now
   c_ctx->m_WSData = std::move(unmasked_payload_data);
-  std::future<void> event = std::async(std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse, application_context_->m_WSResponseContext.get(), c_ctx);
-  application_context_->m_AsyncQueue->CreateTask(std::move(event), "");
+  std::future<void> task = std::async(
+      std::launch::deferred, &Elvis::IResponseContext::DoCreateResponse,
+      m_WSResponseContext.get(), c_ctx);
+  m_ConcurrentQueue->CreateTask(std::move(task), "");
 }

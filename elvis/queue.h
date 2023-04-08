@@ -1,5 +1,6 @@
 //
-// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot com)
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
 //
@@ -9,65 +10,76 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
-#include <vector>
-#include <list>
+#include <algorithm>
 #include <future>
-#include <string>
+#include <iostream>
+#include <list>
 #include <memory>
 #include <mutex>
-#include <iostream>
-#include <algorithm>
+#include <shared_mutex>
+#include <string>
+#include <vector>
 
 namespace Elvis
 {
   class IQueue
   {
   public:
+    using wlock = std::unique_lock<std::shared_mutex>;
+    using rlock = std::shared_lock<std::shared_mutex>;
+
     virtual ~IQueue() = default;
 
-    virtual std::future<void> RunTask() = 0;
+    virtual bool RunTask(std::future<void> &task) = 0;
 
     virtual void CreateTask(std::future<void> event, std::string taskType) = 0;
   };
 
-  class AsyncQueue final : public IQueue
+  class ConcurrentQueue final : public IQueue
   {
   public:
-    AsyncQueue(int const capacity) : m_Capacity(capacity) {}
+    ConcurrentQueue(int const capacity) : m_Capacity(capacity) {}
 
-    std::future<void> RunTask() override
+    virtual bool RunTask(std::future<void> &task) override
     {
-      
-      std::lock_guard<std::mutex> lock(m_AsyncQueueLock);
+      // std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
+      wlock lock(m_SharedMutex);
       if (!empty())
       {
-        auto pair = std::move(m_AsyncQueue.front());
+        auto pair = std::move(m_ConcurrentQueue.front());
 #ifdef DEBUG
-        std::cout << "AsyncQueue::RunTask " << pair.second << "\n";
+        std::cout << "ConcurrentQueue::RunTask " << pair.second << "\n";
 #endif
-        m_AsyncQueue.pop_front();
-        return std::move(pair.first);
+        task = std::move(pair.first);
+        m_ConcurrentQueue.pop_front();
+        return true;
       }
-      std::future<void> event;
-      return event;
+      return false;
     }
 
-    void CreateTask(std::future<void> event, std::string taskType) override
+    virtual void CreateTask(std::future<void> event,
+                            std::string taskType) override
     {
-      std::lock_guard<std::mutex> lock(m_AsyncQueueLock);
+      // std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
+      wlock lock(m_SharedMutex);
 #ifdef DEBUG
-      std::cout << "AsyncQueue::CreateTask " << taskType << "\n";
+      std::cout << "ConcurrentQueue::CreateTask " << taskType << "\n";
 #endif
-      m_AsyncQueue.emplace_back(std::make_pair(std::move(event), taskType));
+      m_ConcurrentQueue.emplace_back(std::make_pair(std::move(event), taskType));
       return;
     }
 
-    bool empty() const { return m_AsyncQueue.empty(); }
+    bool empty() const
+    {
+      // rlock lock(m_SharedMutex);
+      return m_ConcurrentQueue.empty();
+    }
 
   private:
-    std::mutex m_AsyncQueueLock;
-    std::list<std::pair<std::future<void>, std::string >> m_AsyncQueue;
+    std::mutex m_ConcurrentQueueLock;
+    mutable std::shared_mutex m_SharedMutex;
+    std::list<std::pair<std::future<void>, std::string>> m_ConcurrentQueue;
     const int m_Capacity;
   };
-}
+} // namespace Elvis
 #endif // QUEUE_H
