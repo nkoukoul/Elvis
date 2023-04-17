@@ -19,46 +19,44 @@
 #include "logger.h"
 #include "queue.h"
 #include "request_context.h"
+#include "route_manager.h"
 #include "utils.h"
 
-class app
+class App
 {
 public:
   // Singletons should not be cloneable.
-  app(app &other) = delete;
+  App(App &other) = delete;
 
   // Singletons should not be assignable.
-  void operator=(const app &) = delete;
+  void operator=(const App &) = delete;
 
   // This is the static method that controls the access to the singleton
-  static app *get_instance();
+  static App *GetInstance();
 
-  void configure(
-      std::string ipaddr, int port,
-      std::shared_ptr<Elvis::ConcurrentQueue> concurrentQueue,
-      std::unique_ptr<Elvis::HttpRequestContext> httpRequestContext = nullptr,
-      std::unique_ptr<Elvis::WebsocketRequestContext> wsRequestContext =
-          nullptr,
-      std::unique_ptr<Elvis::IJSONContext> jsonContext = nullptr);
+  void Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteManager> routeManager);
 
-  void run(int thread_number);
+  void Run(int thread_number);
 
+  std::shared_ptr<Elvis::IQueue> GetAppConcurrentQueueSharedInstance();
   std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
-  std::unique_ptr<Elvis::TCPContext> ioc_;
+  std::shared_ptr<Elvis::TCPContext> m_IOContext;
+  std::unique_ptr<Elvis::HttpRequestContext> m_HTTPRequestContext;
+  std::unique_ptr<Elvis::WebsocketRequestContext> m_WSRequestContext;
   std::unique_ptr<Elvis::IJSONContext> m_JSONContext;
   std::unique_ptr<Elvis::IDBEngine> dbEngine;
   std::unique_ptr<Elvis::ICacheManager> m_CacheManager;
   std::unique_ptr<ILogger> m_Logger;
-  std::shared_ptr<Elvis::ICryptoManager> cryptoManager;
+  std::shared_ptr<Elvis::ICryptoManager> m_CryptoManager;
   static std::mutex app_mutex_;
   std::vector<int> broadcast_fd_list;
 
 protected:
-  app() = default;
-  ~app(){};
+  App() = default;
+  ~App(){};
 
 private:
-  static app *app_instance_;
+  static App *app_instance_;
   std::vector<std::thread> thread_pool_;
 };
 

@@ -35,15 +35,23 @@ std::unique_ptr<Elvis::RouteManager> routeManager = std::make_unique<Elvis::Rout
 	routeManager->SetRoute("/file", "POST", std::move(std::make_unique<FilePostController>()));
 ```
 
-Configure app with default JSON, HTTP Req/Res and WS Req/Res context. One can also override the respective abstract classes and provide his own.
+Configure app with hostname, port and routes.
 ```
-my_app->configure(std::move(tcp_server),
-		std::move(std::make_unique<Elvis::HttpRequestContext>(my_app)),
-		std::move(std::make_unique<Elvis::HttpResponseContext>(my_app)),
-		std::move(std::make_unique<Elvis::WebsocketRequestContext>(my_app)),
-		std::move(std::make_unique<Elvis::WebsocketResponseContext>(my_app)),
-		std::move(std::make_unique<Elvis::JSONContext>()),
-		std::move(routeManager));
+my_app->Configure(ipaddr, port, routeManager);
+```
+Default configure provides
+* IOContext (elvis/io_context.h)
+* Logger (elvis/logger.h)
+* Concurrent Queue (elvis/queue.h)
+* CryptoManager utils (elvis/crypto_manager.h, elvis/utils.h)
+* Http Request/Response Context (elvis/request_context.h, elvis/response_context.h)
+* WS Request/Response Context (if a crypto library is present) (elvis/request_context.h, elvis/response_context.h)
+* JSON parsing and validating utils (elvis/json_utils.h)
+* LRU Cache (there is also a timer based cash) (elvis/cache.h)
+
+Run threaded applications.
+```
+my_app->Run(thread_number);
 ```
 
 Create models

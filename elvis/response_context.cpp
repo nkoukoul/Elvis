@@ -8,11 +8,12 @@
 //
 
 #include "response_context.h"
-#include "app_context.h"
-#include "io_context.h"
+#include "utils.h"
 
-Elvis::HttpResponseCreator::HttpResponseCreator(app *application_context)
-    : application_context_(application_context) {}
+Elvis::HttpResponseCreator::HttpResponseCreator(
+    std::shared_ptr<Elvis::IOContext> ioContext,
+    std::shared_ptr<Elvis::IQueue> concurrentQueue,
+    std::shared_ptr<Elvis::ICryptoManager> cryptoManager) : m_IOContext(ioContext), m_ConcurrentQueue(concurrentQueue), m_CryptoManager(cryptoManager) {}
 
 void Elvis::HttpResponseCreator::CreateResponse(
     std::shared_ptr<Elvis::ClientContext> c_ctx) const
@@ -32,8 +33,7 @@ void Elvis::HttpResponseCreator::CreateResponse(
     // wsconnection
     status = "101 Switching Protocols";
     sec_websocket_key =
-        generate_ws_key(c_ctx->m_HttpHeaders["Sec-WebSocket-Key"],
-                        application_context_->cryptoManager);
+        generate_ws_key(c_ctx->m_HttpHeaders["Sec-WebSocket-Key"], m_CryptoManager);
     c_ctx->m_ShouldCloseConnection = false;
     c_ctx->m_IsWebsocketConnection = true;
     c_ctx->m_IsHandshakeCompleted = false;
@@ -92,15 +92,15 @@ void Elvis::HttpResponseCreator::CreateResponse(
   c_ctx->m_HttpBytesSend = 0;
   std::future<void> event =
       std::async(std::launch::deferred, &Elvis::IOContext::DoWrite,
-                 application_context_->ioc_.get(), c_ctx);
-  application_context_->m_ConcurrentQueue->CreateTask(
+                 m_IOContext.get(), c_ctx);
+  m_ConcurrentQueue->CreateTask(
       std::move(event),
       "HttpResponseCreator::CreateResponse -> IOContext::DoWrite");
 }
 
-Elvis::WebsocketResponseCreator::WebsocketResponseCreator(
-    app *application_context)
-    : application_context_(application_context) {}
+Elvis::WebsocketResponseCreator::WebsocketResponseCreator(std::shared_ptr<Elvis::IOContext> ioContext,
+                                                          std::shared_ptr<Elvis::IQueue> concurrentQueue)
+    : m_IOContext(ioContext), m_ConcurrentQueue(concurrentQueue) {}
 
 void Elvis::WebsocketResponseCreator::CreateResponse(
     std::shared_ptr<Elvis::ClientContext> c_ctx) const
@@ -144,6 +144,6 @@ void Elvis::WebsocketResponseCreator::CreateResponse(
   c_ctx->m_WSResponse += c_ctx->m_WSData;
   std::future<void> event =
       std::async(std::launch::deferred, &Elvis::IOContext::DoWrite,
-                 application_context_->ioc_.get(), c_ctx);
-  application_context_->m_ConcurrentQueue->CreateTask(std::move(event), "");
+                 m_IOContext.get(), c_ctx);
+  m_ConcurrentQueue->CreateTask(std::move(event), "");
 }

@@ -10,6 +10,7 @@
 #ifndef REQUEST_CONTEXT_H
 #define REQUEST_CONTEXT_H
 
+#include "client_context.h"
 #include "queue.h"
 #include "response_context.h"
 #include "route_manager.h"
@@ -19,8 +20,6 @@
 
 namespace Elvis
 {
-  class ClientContext;
-
   class IRequestParser
   {
   public:

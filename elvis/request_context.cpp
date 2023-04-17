@@ -7,7 +7,6 @@
 // repository: https://github.com/nkoukoul/Elvis
 //
 #include "request_context.h"
-#include "io_context.h"
 #include <sstream>
 
 Elvis::HttpRequestParser::HttpRequestParser(

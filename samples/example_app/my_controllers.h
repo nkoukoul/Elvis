@@ -8,45 +8,45 @@
 #include <string>
 #include <unordered_map>
 
-class FileGetController : public Elvis::IController {
+class FileGetController : public Elvis::IController
+{
 private:
-  app *ac;
+  App *ac;
 
 public:
-  FileGetController(app *ac);
+  FileGetController(App *ac);
 
-  void DoStuff(std::unordered_map<std::string, std::string>
-                   &deserialized_input_data) override;
+  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
-class FilePostController : public Elvis::IController {
+class FilePostController : public Elvis::IController
+{
 private:
-  app *ac;
+  App *ac;
 
 public:
-  FilePostController(app *ac);
+  FilePostController(App *ac);
 
-  void DoStuff(std::unordered_map<std::string, std::string>
-                   &deserialized_input_data) override;
+  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
-class trigger_post_controller : public Elvis::IController {
+class TriggerPostController : public Elvis::IController
+{
 private:
-  app *ac;
+  App *ac;
 
 public:
-  trigger_post_controller(app *ac);
-  void DoStuff(std::unordered_map<std::string, std::string>
-                   &deserialized_input_data) override;
+  TriggerPostController(App *ac);
+  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
-class user_post_controller : public Elvis::IController {
+class UserPostController : public Elvis::IController
+{
 private:
-  app *ac;
+  App *ac;
 
 public:
-  user_post_controller(app *ac);
-  void DoStuff(std::unordered_map<std::string, std::string>
-                   &deserialized_input_data) override;
+  UserPostController(App *ac);
+  void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 #endif // MY_CONTROLLERS_H

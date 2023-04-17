@@ -65,8 +65,8 @@ void IAttribute::setValue(T value)
 class IModel
 {
 public:
-  virtual void Create(app *ac) const = 0;
-  virtual void Retrieve(app *ac) const = 0;
+  virtual void Create(App *ac) const = 0;
+  virtual void Retrieve(App *ac) const = 0;
   virtual void Display() const = 0;
 };
 

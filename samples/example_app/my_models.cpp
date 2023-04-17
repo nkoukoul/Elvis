@@ -11,7 +11,7 @@ FileModel::FileModel(std::string filename, std::string md5) {
   m_Md5->setValue(md5);
 }
 
-void FileModel::Create(app *ac) const {
+void FileModel::Create(App *ac) const {
   std::string sql = "insert into operations (";
   std::ostringstream values;
   values << "values (";
@@ -38,7 +38,7 @@ void FileModel::Create(app *ac) const {
   ac->dbEngine->CreateModel(sql);
 }
 
-void FileModel::Retrieve(app *ac) const {
+void FileModel::Retrieve(App *ac) const {
   std::string filenameValue =
       dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue();
   std::string md5Value =

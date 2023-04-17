@@ -8,6 +8,8 @@
 //
 
 #include "io_context.h"
+#include "app_context.h"
+#include "request_context.h"
 #include <arpa/inet.h>
 #include <bitset>
 #include <csignal>
@@ -46,14 +48,8 @@ void non_block_with_timeout(int sd)
     std::cout << "sock timeout failed\n";
 }
 
-Elvis::TCPContext::TCPContext(
-    std::string ipaddr, int port,
-    std::unique_ptr<Elvis::HttpRequestContext> httpRequestContext,
-    std::unique_ptr<Elvis::WebsocketRequestContext> wsRequestContext,
-    std::shared_ptr<Elvis::IQueue> concurrentQueue)
-    : ipaddr_(ipaddr), port_(port),
-      m_HTTPRequestContext(std::move(httpRequestContext)),
-      m_WSRequestContext(std::move(wsRequestContext))
+Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvis::IQueue> concurrentQueue)
+    : ipaddr_(ipaddr), port_(port)
 {
   m_ConcurrentQueue = concurrentQueue;
   struct sockaddr_in server;
@@ -168,9 +164,10 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       if (c_ctx->m_IsWebsocketConnection && c_ctx->m_WSMessage.size())
       {
         std::cout << "TCPContext::DoRead: Websocket Read Finished\n";
+        auto app = App::GetInstance();
         std::future<void> task =
             std::async(std::launch::deferred, &IRequestContext::DoParse,
-                       m_WSRequestContext.get(), c_ctx);
+                       app->m_WSRequestContext.get(), c_ctx);
         m_ConcurrentQueue->CreateTask(
             std::move(task), "TCPContext::DoRead -> IRequestContext::DoParse");
       } // if is http and has data proceed to parsing
@@ -180,9 +177,10 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
         std::cout << "TCPContext::DoRead: HTTP Read Finished\n";
 #endif
         c_ctx->m_HttpMessage += '\n'; // add end of line for getline
+        auto app = App::GetInstance();
         std::future<void> task =
             std::async(std::launch::deferred, &IRequestContext::DoParse,
-                       m_HTTPRequestContext.get(), c_ctx);
+                       app->m_HTTPRequestContext.get(), c_ctx);
         m_ConcurrentQueue->CreateTask(
             std::move(task), "TCPContext::DoRead -> IRequestContext::DoParse");
       } // read simply blocked with no data try again

@@ -7,10 +7,6 @@
 // repository: https://github.com/nkoukoul/Elvis
 //
 #include "controllers.h"
-#include "app_context.h"
-#include "queue.h"
-#include "response_context.h"
-#include <future>
 
 void Elvis::IController::Run(std::shared_ptr<Elvis::ClientContext> c_ctx)
 {

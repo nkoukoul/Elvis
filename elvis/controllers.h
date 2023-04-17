@@ -10,14 +10,13 @@
 #ifndef CONTROLLERS_H
 #define CONTROLLERS_H
 
+#include "client_context.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 
 namespace Elvis
 {
-  class ClientContext;
-
   class IController
   {
   public:
