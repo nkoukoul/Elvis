@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
+// Copyright (c) 2020-2023 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
 // com)
 //
 // Distributed under the MIT License (See accompanying file LICENSE.md)
@@ -28,12 +28,13 @@ void non_block_socket(int sd)
   int flags = fcntl(sd, F_GETFL, 0);
   if (flags == -1)
   {
-    // perror("fcntl()");
-    return;
+    std::cout << "Socket flags set failed\n";
+    std::exit(EXIT_FAILURE);
   }
   if (fcntl(sd, F_SETFL, flags | O_NONBLOCK) == -1)
   {
-    // perror("fcntl()");
+    std::cout << "Socket set to NonBlock failed\n";
+    std::exit(EXIT_FAILURE);
   }
 }
 
@@ -43,15 +44,16 @@ void non_block_with_timeout(int sd)
   timeout.tv_sec = 0;
   timeout.tv_usec = 100;
 
-  if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,
-                 sizeof(timeout)) < 0)
-    std::cout << "sock timeout failed\n";
+  if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) 
+  {
+    std::cout << "Socket set timeout failed\n";
+    std::exit(EXIT_FAILURE);
+  }
 }
 
-Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvis::IQueue> concurrentQueue)
-    : ipaddr_(ipaddr), port_(port)
+Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvis::IQueue> concurrentQueue, std::shared_ptr<Elvis::ILogger> logger)
+    : ipaddr_(ipaddr), port_(port), m_ConcurrentQueue{concurrentQueue}, m_Logger{logger}
 {
-  m_ConcurrentQueue = concurrentQueue;
   struct sockaddr_in server;
 
   server_sock_ = socket(AF_INET, SOCK_STREAM, PF_UNSPEC);
@@ -66,7 +68,7 @@ Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvi
 
   if (bind(server_sock_, (struct sockaddr *)&server, sizeof(server)) < 0)
   {
-    std::cout << "bind failed\n";
+    m_Logger->Log(Elvis::LogLevel::ERROR, "Server failed to bind socket");
     exit(1);
   }
 
@@ -75,8 +77,6 @@ Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvi
 
 void Elvis::TCPContext::Run()
 {
-  // std::future<void> task = std::async(std::launch::deferred,
-  // &Elvis::IOContext::HandleConnections, this);
   m_ConcurrentQueue->CreateTask(
       std::move(std::async(std::launch::deferred,
                            &Elvis::IOContext::HandleConnections, this)),
@@ -92,7 +92,7 @@ void Elvis::TCPContext::Run()
     }
     else
     {
-      std::cout << "No task\n";
+      m_Logger->Log(Elvis::LogLevel::DEBUG, "No task to execute.");
     }
   }
 }
@@ -108,19 +108,16 @@ void Elvis::TCPContext::HandleConnections()
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      ;
-      ; // no incoming connection for non-blocking sockets
+      m_Logger->Log(Elvis::LogLevel::DEBUG, "No incoming connections.");
     }
     else
     {
-      std::cout << "Error while accepting connection\n";
+      m_Logger->Log(Elvis::LogLevel::ERROR, "Error while accepting connection.");
     }
   }
   else
   {
-#ifdef DEBUG
-    std::cout << "Incoming Connection\n";
-#endif
+    m_Logger->Log(Elvis::LogLevel::DEBUG, "Incoming connection.");
     non_block_with_timeout(client_socket);
     std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
     c_ctx->m_ClientSocket = client_socket;

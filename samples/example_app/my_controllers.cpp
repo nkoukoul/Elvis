@@ -12,13 +12,11 @@ void FileGetController::DoStuff(std::unordered_map<std::string, std::string> &de
   // fm->filename_.set(filename);
   // fm->retrieve_model(ac);
   // fm->repr();
-  auto cache =
-      ac->m_CacheManager->getCache<Elvis::LRUCache<std::string, std::string>>();
-  std::string controller_data = cache->operator[](filename);
+  std::string controller_data = ac->GetCacheData(filename);
   if (controller_data.empty())
   {
     controller_data = read_from_file("", filename);
-    cache->Insert(filename, controller_data);
+    ac->Cache(filename, controller_data);
   }
   deserialized_input_data["controller_data"] = controller_data;
 }
@@ -28,21 +26,18 @@ FilePostController::FilePostController(App *ac_) : ac(ac_) {}
 // "5f7f11f4b89befa92c9451ffa5c81184"} used to refresh or add to cache content
 void FilePostController::DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data)
 {
-  // this is json data so further deserialization is needed
-  auto input = ac->m_JSONContext
-                   ->DoDeserialize(std::move(deserialized_input_data["data"]))
-                   .front();
+  // This is json data so further deserialization is needed. The result is a list of objects.
+  // Here we expect only one.
+  auto input = ac->JSONDeserialize(std::move(deserialized_input_data["data"])).front();
   if (input.empty())
   {
     std::cout << "FilePostController: 400 Bad Request\n";
     deserialized_input_data["status"] = "400 Bad Request";
     return;
   }
-  auto fm = std::make_unique<FileModel>(input["filename"], input["md5sum"]);
-  fm->Create(ac);
-  auto cache =
-      ac->m_CacheManager->getCache<Elvis::LRUCache<std::string, std::string>>();
-  cache->Insert(input["filename"], read_from_file("", input["filename"]));
+  auto file_model = std::make_unique<FileModel>(input["filename"], input["md5sum"]);
+  file_model->Create(ac);
+  ac->Cache(input["filename"], read_from_file("", input["filename"]));
   // cache->State();
 }
 

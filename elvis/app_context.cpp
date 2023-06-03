@@ -14,7 +14,7 @@
 App *App::app_instance_{nullptr};
 std::mutex App::app_mutex_;
 
-void App::Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteManager> routeManager)
+void App::Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteManager> routeManager, std::string logfile)
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
 #ifdef USE_CRYPTO
@@ -22,11 +22,11 @@ void App::Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteMa
 #else
   m_CryptoManager = std::make_shared<Elvis::MockCryptoManager>();
 #endif
-  m_Logger = std::make_unique<Logger>("server.log");
+  m_Logger = std::make_shared<Elvis::Logger>(logfile, Elvis::LogLevel::DEBUG);
   m_ConcurrentQueue = std::make_shared<Elvis::ConcurrentQueue>(100);
-  m_IOContext = std::make_shared<Elvis::TCPContext>(ipaddr, port, m_ConcurrentQueue);
+  m_IOContext = std::make_shared<Elvis::TCPContext>(ipaddr, port, m_ConcurrentQueue, m_Logger);
   auto httpResponseContext = std::make_unique<Elvis::HttpResponseContext>(m_IOContext, m_ConcurrentQueue, m_CryptoManager);
-  m_HTTPRequestContext = std::make_unique<Elvis::HttpRequestContext>(std::move(httpResponseContext), m_ConcurrentQueue, routeManager);
+  m_HTTPRequestContext = std::make_shared<Elvis::HttpRequestContext>(std::move(httpResponseContext), m_ConcurrentQueue, routeManager);
   auto wsResponseContext = std::make_unique<Elvis::WebsocketResponseContext>(m_IOContext, m_ConcurrentQueue);
   m_WSRequestContext = std::make_unique<Elvis::WebsocketRequestContext>(std::move(wsResponseContext), m_ConcurrentQueue);
   m_JSONContext = std::make_unique<Elvis::JSONContext>();
@@ -37,9 +37,9 @@ void App::Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteMa
 void App::Run(int thread_number)
 {
 #ifdef USE_POSTGRES
-  dbEngine = std::make_unique<Elvis::PGEngine>(thread_number);
+  m_DBEngine = std::make_unique<Elvis::PGEngine>(thread_number);
 #else
-  dbEngine = std::make_unique<Elvis::MockEngine>(thread_number);
+  m_DBEngine = std::make_unique<Elvis::MockEngine>(thread_number);
 #endif
   if (m_IOContext)
   {
@@ -59,9 +59,29 @@ void App::Run(int thread_number)
   return;
 }
 
-std::shared_ptr<Elvis::IQueue> App::GetAppConcurrentQueueSharedInstance()
+void App::Cache(std::string key, std::string data)
 {
-  return m_ConcurrentQueue;
+  m_CacheManager->GetCache<Elvis::LRUCache<std::string, std::string>>()->Insert(key, data);
+}
+
+std::string App::GetCacheData(std::string key) const
+{
+  return (*m_CacheManager->GetCache<Elvis::LRUCache<std::string, std::string>>())[key];
+}
+
+std::list<std::unordered_map<std::string, std::string>> App::JSONDeserialize(std::string &&serializedData) const
+{
+  return m_JSONContext->DoDeserialize(std::move(serializedData));
+}
+
+void App::CreateModel(std::string query)
+{
+  m_DBEngine->CreateModel(query);
+}
+
+void App::RetrieveModel(std::string query)
+{
+  m_DBEngine->RetrieveModel(query);
 }
 
 App *App::GetInstance()

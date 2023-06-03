@@ -13,10 +13,8 @@ Elvis::HttpRequestParser::HttpRequestParser(
     std::unique_ptr<Elvis::HttpResponseContext> httpResponseContext,
     std::shared_ptr<Elvis::IQueue> concurrentQueue,
     std::shared_ptr<Elvis::RouteManager> routeManager)
-    : m_HttpResponseContext(std::move(httpResponseContext))
+    : m_HttpResponseContext{std::move(httpResponseContext)}, m_ConcurrentQueue{concurrentQueue}, m_RouteManager{routeManager}
 {
-  m_RouteManager = routeManager;
-  m_ConcurrentQueue = concurrentQueue;
 }
 
 void Elvis::HttpRequestParser::Parse(
@@ -96,9 +94,8 @@ void Elvis::HttpRequestParser::Parse(
 Elvis::WebsocketRequestParser::WebsocketRequestParser(
     std::unique_ptr<WebsocketResponseContext> wsResponseContext,
     std::shared_ptr<Elvis::IQueue> concurrentQueue)
-    : m_WSResponseContext(std::move(wsResponseContext))
+    : m_WSResponseContext{std::move(wsResponseContext)}, m_ConcurrentQueue{concurrentQueue}
 {
-  m_ConcurrentQueue = concurrentQueue;
 }
 
 void Elvis::WebsocketRequestParser::Parse(

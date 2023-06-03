@@ -12,6 +12,7 @@
 
 #include "client_context.h"
 #include "queue.h"
+#include "logger.h"
 #include <fcntl.h>
 #include <memory>
 #include <mutex>
@@ -38,7 +39,7 @@ namespace Elvis
   {
   public:
     TCPContext(std::string ipaddr, int port,
-               std::shared_ptr<Elvis::IQueue> concurrentQueue);
+               std::shared_ptr<Elvis::IQueue> concurrentQueue, std::shared_ptr<Elvis::ILogger> logger);
 
     void Run() override;
 
@@ -50,6 +51,7 @@ namespace Elvis
 
   private:
     std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
+    std::shared_ptr<Elvis::ILogger> m_Logger;
     std::string ipaddr_;
     int port_;
     int server_sock_;

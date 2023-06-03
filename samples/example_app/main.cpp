@@ -1,12 +1,3 @@
-//
-// Copyright (c) 2020-2021 Nikolaos Koukoulas (koukoulas dot nikos at gmail dot
-// com)
-//
-// Distributed under the MIT License (See accompanying file LICENSE.md)
-//
-// repository: https://github.com/nkoukoul/Elvis
-//
-
 #include "my_controllers.h"
 #include <elvis/app_context.h>
 #include <elvis/route_manager.h>
@@ -43,7 +34,7 @@ int main(int argc, char *argv[])
         std::move(std::make_unique<UserPostController>(my_app)));
     // Application context is injected with the http request and response handler,
     // the websocket request and response handler the route manager and json/utils
-    my_app->Configure(ipaddr, port, routeManager);
+    my_app->Configure(ipaddr, port, routeManager, "server.log");
 
     std::cout << "server accepting connections on " << ipaddr << ":" << port
               << "\n";

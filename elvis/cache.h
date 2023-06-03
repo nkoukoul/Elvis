@@ -195,7 +195,7 @@ namespace Elvis
     virtual ~ICacheManager() = default;
 
     template <class ICache>
-    ICache *getCache();
+    ICache *GetCache();
   };
 
   template <class CACHE>
@@ -207,16 +207,16 @@ namespace Elvis
       m_Cache = std::make_unique<CACHE>(m_Cachesize);
     }
 
-    CACHE *getCache() { return m_Cache.get(); }
+    CACHE *GetCache() { return m_Cache.get(); }
 
   private:
     std::unique_ptr<CACHE> m_Cache;
   };
 
   template <class ICache>
-  ICache *ICacheManager::getCache()
+  ICache *ICacheManager::GetCache()
   {
-    return static_cast<CacheManager<ICache> *>(this)->getCache();
+    return static_cast<CacheManager<ICache> *>(this)->GetCache();
   }
 } // namespace Elvis
 #endif // CACHE_H

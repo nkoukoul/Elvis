@@ -13,7 +13,7 @@
 Elvis::HttpResponseCreator::HttpResponseCreator(
     std::shared_ptr<Elvis::IOContext> ioContext,
     std::shared_ptr<Elvis::IQueue> concurrentQueue,
-    std::shared_ptr<Elvis::ICryptoManager> cryptoManager) : m_IOContext(ioContext), m_ConcurrentQueue(concurrentQueue), m_CryptoManager(cryptoManager) {}
+    std::shared_ptr<Elvis::ICryptoManager> cryptoManager) : m_IOContext{ioContext}, m_ConcurrentQueue{concurrentQueue}, m_CryptoManager{cryptoManager} {}
 
 void Elvis::HttpResponseCreator::CreateResponse(
     std::shared_ptr<Elvis::ClientContext> c_ctx) const
@@ -100,7 +100,7 @@ void Elvis::HttpResponseCreator::CreateResponse(
 
 Elvis::WebsocketResponseCreator::WebsocketResponseCreator(std::shared_ptr<Elvis::IOContext> ioContext,
                                                           std::shared_ptr<Elvis::IQueue> concurrentQueue)
-    : m_IOContext(ioContext), m_ConcurrentQueue(concurrentQueue) {}
+    : m_IOContext{ioContext}, m_ConcurrentQueue{concurrentQueue} {}
 
 void Elvis::WebsocketResponseCreator::CreateResponse(
     std::shared_ptr<Elvis::ClientContext> c_ctx) const

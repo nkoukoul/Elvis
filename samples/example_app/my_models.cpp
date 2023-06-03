@@ -2,7 +2,8 @@
 
 // model is {"filename": "test.txt",  "md5sum":
 // "5f7f11f4b89befa92c9451ffa5c81184"}
-FileModel::FileModel(std::string filename, std::string md5) {
+FileModel::FileModel(std::string filename, std::string md5)
+{
   m_Filename = std::make_unique<Attribute<std::string>>();
   m_Filename->setKey("filename");
   m_Filename->setValue(filename);
@@ -11,19 +12,22 @@ FileModel::FileModel(std::string filename, std::string md5) {
   m_Md5->setValue(md5);
 }
 
-void FileModel::Create(App *ac) const {
+void FileModel::Create(App *ac) const
+{
   std::string sql = "insert into operations (";
   std::ostringstream values;
   values << "values (";
   if (dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue() !=
-      "") {
+      "")
+  {
     sql += m_Filename->getKey();
     values << "'" +
                   dynamic_cast<Attribute<std::string> *>(m_Filename.get())
                       ->getValue() +
                   "'";
   }
-  if (dynamic_cast<Attribute<std::string> *>(m_Md5.get())->getValue() != "") {
+  if (dynamic_cast<Attribute<std::string> *>(m_Md5.get())->getValue() != "")
+  {
     sql += ", ";
     sql += m_Md5->getKey();
     values << ", ";
@@ -35,10 +39,11 @@ void FileModel::Create(App *ac) const {
   sql += ") ";
   values << ")";
   sql += values.str();
-  ac->dbEngine->CreateModel(sql);
+  ac->CreateModel(sql);
 }
 
-void FileModel::Retrieve(App *ac) const {
+void FileModel::Retrieve(App *ac) const
+{
   std::string filenameValue =
       dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue();
   std::string md5Value =
@@ -47,22 +52,28 @@ void FileModel::Retrieve(App *ac) const {
                     m_Md5->getKey() + " from operations";
   std::ostringstream values;
   values << "values (";
-  if (!filenameValue.empty() && !md5Value.empty()) {
+  if (!filenameValue.empty() && !md5Value.empty())
+  {
     sql += "where ";
     values << m_Filename->getKey() << " = '" + filenameValue + "' and ";
     values << m_Md5->getKey() << " = '" + md5Value + "'";
-  } else if (!filenameValue.empty()) {
+  }
+  else if (!filenameValue.empty())
+  {
     sql += "where ";
     values << m_Filename->getKey() << " = '" + filenameValue + "'";
-  } else if (!md5Value.empty()) {
+  }
+  else if (!md5Value.empty())
+  {
     sql += "where ";
     values << m_Md5->getKey() << " = '" + md5Value + "'";
   }
   sql += values.str();
-  ac->dbEngine->RetrieveModel(sql);
+  ac->RetrieveModel(sql);
 }
 
-void FileModel::Display() const {
+void FileModel::Display() const
+{
   std::cout
       << m_Filename->getKey() << ": "
       << dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue()

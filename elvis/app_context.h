@@ -34,30 +34,41 @@ public:
   // This is the static method that controls the access to the singleton
   static App *GetInstance();
 
-  void Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteManager> routeManager);
+  void Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteManager> routeManager, std::string logfile);
+
+  void Cache(std::string key, std::string data);
+
+  std::string GetCacheData(std::string key) const;
+
+  std::list<std::unordered_map<std::string, std::string>> JSONDeserialize(std::string&& serializedData) const;
+
+  void CreateModel(std::string query);
+
+  void RetrieveModel(std::string query);
 
   void Run(int thread_number);
 
-  std::shared_ptr<Elvis::IQueue> GetAppConcurrentQueueSharedInstance();
-  std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
-  std::shared_ptr<Elvis::TCPContext> m_IOContext;
-  std::unique_ptr<Elvis::HttpRequestContext> m_HTTPRequestContext;
-  std::unique_ptr<Elvis::WebsocketRequestContext> m_WSRequestContext;
-  std::unique_ptr<Elvis::IJSONContext> m_JSONContext;
-  std::unique_ptr<Elvis::IDBEngine> dbEngine;
-  std::unique_ptr<Elvis::ICacheManager> m_CacheManager;
-  std::unique_ptr<ILogger> m_Logger;
-  std::shared_ptr<Elvis::ICryptoManager> m_CryptoManager;
   static std::mutex app_mutex_;
   std::vector<int> broadcast_fd_list;
 
 protected:
   App() = default;
-  ~App(){};
+  ~App() = default;
 
 private:
   static App *app_instance_;
   std::vector<std::thread> thread_pool_;
+  std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
+  std::shared_ptr<Elvis::TCPContext> m_IOContext;
+  std::shared_ptr<Elvis::HttpRequestContext> m_HTTPRequestContext;
+  std::unique_ptr<Elvis::WebsocketRequestContext> m_WSRequestContext;
+  std::unique_ptr<Elvis::IJSONContext> m_JSONContext;
+  std::unique_ptr<Elvis::IDBEngine> m_DBEngine;
+  std::unique_ptr<Elvis::ICacheManager> m_CacheManager;
+  std::shared_ptr<Elvis::ILogger> m_Logger;
+  std::shared_ptr<Elvis::ICryptoManager> m_CryptoManager;
+
+  friend class Elvis::TCPContext;
 };
 
 #endif // APP_CONTEXT_H
