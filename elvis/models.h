@@ -10,13 +10,7 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-#include "app_context.h"
-#include <iostream>
-#include <list>
-#include <stack>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
 class IAttribute
 {
@@ -65,8 +59,8 @@ void IAttribute::setValue(T value)
 class IModel
 {
 public:
-  virtual void Create(App *ac) const = 0;
-  virtual void Retrieve(App *ac) const = 0;
+  virtual void Create() const = 0;
+  virtual void Retrieve() const = 0;
   virtual void Display() const = 0;
 };
 

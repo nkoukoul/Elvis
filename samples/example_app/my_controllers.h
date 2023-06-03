@@ -10,43 +10,31 @@
 
 class FileGetController : public Elvis::IController
 {
-private:
-  App *ac;
-
 public:
-  FileGetController(App *ac);
+  FileGetController();
 
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
 class FilePostController : public Elvis::IController
 {
-private:
-  App *ac;
-
 public:
-  FilePostController(App *ac);
+  FilePostController();
 
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
 class TriggerPostController : public Elvis::IController
 {
-private:
-  App *ac;
-
 public:
-  TriggerPostController(App *ac);
+  TriggerPostController();
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
 class UserPostController : public Elvis::IController
 {
-private:
-  App *ac;
-
 public:
-  UserPostController(App *ac);
+  UserPostController();
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 #endif // MY_CONTROLLERS_H

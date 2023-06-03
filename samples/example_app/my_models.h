@@ -13,9 +13,9 @@ public:
   FileModel() = delete;
   FileModel(std::string filename, std::string md5);
 
-  virtual void Create(App *ac) const override;
+  virtual void Create() const override;
 
-  virtual void Retrieve(App *ac) const override;
+  virtual void Retrieve() const override;
 
   virtual void Display() const override;
 };

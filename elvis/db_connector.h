@@ -10,10 +10,7 @@
 #ifndef DB_CONNECTOR_H
 #define DB_CONNECTOR_H
 
-#include <iostream>
-#include <list>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <vector>
 

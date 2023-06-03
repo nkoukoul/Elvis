@@ -15,8 +15,10 @@
 #include <cryptopp/sha.h>
 #include <iostream>
 
+using namespace Elvis;
+
 virtual std::string
-Elvis::CryptocppCryptoManager::GenerateSHA1(std::string input) const override
+CryptocppCryptoManager::GenerateSHA1(std::string input) const override
 {
   std::string digest, output;
   CryptoPP::SHA1 hash;
@@ -26,7 +28,7 @@ Elvis::CryptocppCryptoManager::GenerateSHA1(std::string input) const override
   return digest;
 }
 
-virtual std::string Elvis::CryptocppCryptoManager::DecodeBase64(
+virtual std::string CryptocppCryptoManager::DecodeBase64(
     std::string encoded_string) const override
 {
   std::string decoded_string;
@@ -36,7 +38,7 @@ virtual std::string Elvis::CryptocppCryptoManager::DecodeBase64(
   return decoded_string;
 }
 
-virtual std::string Elvis::CryptocppCryptoManager::EncodeBase64(
+virtual std::string CryptocppCryptoManager::EncodeBase64(
     std::string payload) const override
 {
   std::string encoded_payload;
@@ -46,7 +48,7 @@ virtual std::string Elvis::CryptocppCryptoManager::EncodeBase64(
   return encoded_payload;
 }
 
-virtual bool Elvis::CryptocppCryptoManager::SHA256VerifyDigest(
+virtual bool CryptocppCryptoManager::SHA256VerifyDigest(
     std::string digest, std::string secret) const override
 {
   try
@@ -68,7 +70,7 @@ virtual bool Elvis::CryptocppCryptoManager::SHA256VerifyDigest(
 }
 
 virtual std::string
-cryptocElvis::CryptocppCryptoManagerpp_crypto_manager::SHA256Sign(
+CryptocppCryptoManager::SHA256Sign(
     std::string digest, std::string secret) const override
 {
   std::string hmac_signature;
@@ -90,8 +92,8 @@ cryptocElvis::CryptocppCryptoManagerpp_crypto_manager::SHA256Sign(
 }
 
 virtual bool
-Elvis::CryptocppCryptoManager::VerifySHA1(std::string password,
-                                          std::string digest) const override
+CryptocppCryptoManager::VerifySHA1(std::string password,
+                                   std::string digest) const override
 {
   CryptoPP::SHA1 hash;
   hash.Update((const byte *)password.data(), password.size());

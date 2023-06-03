@@ -17,28 +17,28 @@ int main(int argc, char *argv[])
     std::string ipaddr = argv[1];
     int port = std::stoi(argv[2]);
     int thread_number = std::max<int>(1, std::stoi(argv[3]));
-    App *my_app = App::GetInstance();
+    Elvis::App *elvis = Elvis::App::GetInstance();
 
     // Route manager is used to connect endpoints with controllers
     std::shared_ptr<Elvis::RouteManager> routeManager =
         std::make_shared<Elvis::RouteManager>();
     routeManager->SetRoute(
-        "/file", "GET", std::move(std::make_unique<FileGetController>(my_app)));
+        "/file", "GET", std::move(std::make_unique<FileGetController>()));
     routeManager->SetRoute(
-        "/file", "POST", std::move(std::make_unique<FilePostController>(my_app)));
+        "/file", "POST", std::move(std::make_unique<FilePostController>()));
     routeManager->SetRoute(
         "/triggers", "POST",
-        std::move(std::make_unique<TriggerPostController>(my_app)));
+        std::move(std::make_unique<TriggerPostController>()));
     routeManager->SetRoute(
         "/login", "POST",
-        std::move(std::make_unique<UserPostController>(my_app)));
+        std::move(std::make_unique<UserPostController>()));
     // Application context is injected with the http request and response handler,
     // the websocket request and response handler the route manager and json/utils
-    my_app->Configure(ipaddr, port, routeManager, "server.log");
+    elvis->Configure(ipaddr, port, routeManager, "server.log", Elvis::LogLevel::INFO);
 
     std::cout << "server accepting connections on " << ipaddr << ":" << port
               << "\n";
 
-    my_app->Run(thread_number);
+    elvis->Run(thread_number);
     return 0;
 }

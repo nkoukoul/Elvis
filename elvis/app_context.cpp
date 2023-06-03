@@ -11,35 +11,37 @@
 #include "pg_db_connector.h"
 #endif
 
+using namespace Elvis;
+
 App *App::app_instance_{nullptr};
 std::mutex App::app_mutex_;
 
-void App::Configure(std::string ipaddr, int port, std::shared_ptr<Elvis::RouteManager> routeManager, std::string logfile)
+void App::Configure(std::string ipaddr, int port, std::shared_ptr<RouteManager> routeManager, std::string logfile, LogLevel loglevel = LogLevel::DEBUG)
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
 #ifdef USE_CRYPTO
   m_CryptoManager = std::make_shared<cryptocpp_crypto_manager>();
 #else
-  m_CryptoManager = std::make_shared<Elvis::MockCryptoManager>();
+  m_CryptoManager = std::make_shared<MockCryptoManager>();
 #endif
-  m_Logger = std::make_shared<Elvis::Logger>(logfile, Elvis::LogLevel::DEBUG);
-  m_ConcurrentQueue = std::make_shared<Elvis::ConcurrentQueue>(100);
-  m_IOContext = std::make_shared<Elvis::TCPContext>(ipaddr, port, m_ConcurrentQueue, m_Logger);
-  auto httpResponseContext = std::make_unique<Elvis::HttpResponseContext>(m_IOContext, m_ConcurrentQueue, m_CryptoManager);
-  m_HTTPRequestContext = std::make_shared<Elvis::HttpRequestContext>(std::move(httpResponseContext), m_ConcurrentQueue, routeManager);
-  auto wsResponseContext = std::make_unique<Elvis::WebsocketResponseContext>(m_IOContext, m_ConcurrentQueue);
-  m_WSRequestContext = std::make_unique<Elvis::WebsocketRequestContext>(std::move(wsResponseContext), m_ConcurrentQueue);
-  m_JSONContext = std::make_unique<Elvis::JSONContext>();
-  m_CacheManager = std::make_unique<Elvis::CacheManager<Elvis::LRUCache<std::string, std::string>>>(3);
+  m_Logger = std::make_shared<Logger>(logfile, loglevel);
+  m_ConcurrentQueue = std::make_shared<ConcurrentQueue>(100);
+  m_IOContext = std::make_shared<TCPContext>(ipaddr, port, m_ConcurrentQueue, m_Logger);
+  auto httpResponseContext = std::make_unique<HttpResponseContext>(m_IOContext, m_ConcurrentQueue, m_CryptoManager);
+  m_HTTPRequestContext = std::make_shared<HttpRequestContext>(std::move(httpResponseContext), m_ConcurrentQueue, routeManager);
+  auto wsResponseContext = std::make_unique<WebsocketResponseContext>(m_IOContext, m_ConcurrentQueue);
+  m_WSRequestContext = std::make_unique<WebsocketRequestContext>(std::move(wsResponseContext), m_ConcurrentQueue);
+  m_JSONContext = std::make_unique<JSONContext>();
+  m_CacheManager = std::make_unique<CacheManager<LRUCache<std::string, std::string>>>(3);
   return;
 }
 
 void App::Run(int thread_number)
 {
 #ifdef USE_POSTGRES
-  m_DBEngine = std::make_unique<Elvis::PGEngine>(thread_number);
+  m_DBEngine = std::make_unique<PGEngine>(thread_number);
 #else
-  m_DBEngine = std::make_unique<Elvis::MockEngine>(thread_number);
+  m_DBEngine = std::make_unique<MockEngine>(thread_number);
 #endif
   if (m_IOContext)
   {
@@ -61,12 +63,12 @@ void App::Run(int thread_number)
 
 void App::Cache(std::string key, std::string data)
 {
-  m_CacheManager->GetCache<Elvis::LRUCache<std::string, std::string>>()->Insert(key, data);
+  m_CacheManager->GetCache<LRUCache<std::string, std::string>>()->Insert(key, data);
 }
 
 std::string App::GetCacheData(std::string key) const
 {
-  return (*m_CacheManager->GetCache<Elvis::LRUCache<std::string, std::string>>())[key];
+  return (*m_CacheManager->GetCache<LRUCache<std::string, std::string>>())[key];
 }
 
 std::list<std::unordered_map<std::string, std::string>> App::JSONDeserialize(std::string &&serializedData) const

@@ -8,7 +8,9 @@
 //
 #include "controllers.h"
 
-void Elvis::IController::Run(std::shared_ptr<Elvis::ClientContext> c_ctx)
+using namespace Elvis;
+
+void IController::Run(std::shared_ptr<ClientContext> c_ctx)
 {
   DoStuff(c_ctx->m_HttpHeaders);
 }

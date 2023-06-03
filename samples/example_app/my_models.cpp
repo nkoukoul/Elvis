@@ -1,5 +1,7 @@
 #include "my_models.h"
+#include <sstream>
 
+using namespace Elvis;
 // model is {"filename": "test.txt",  "md5sum":
 // "5f7f11f4b89befa92c9451ffa5c81184"}
 FileModel::FileModel(std::string filename, std::string md5)
@@ -12,7 +14,7 @@ FileModel::FileModel(std::string filename, std::string md5)
   m_Md5->setValue(md5);
 }
 
-void FileModel::Create(App *ac) const
+void FileModel::Create() const
 {
   std::string sql = "insert into operations (";
   std::ostringstream values;
@@ -39,10 +41,12 @@ void FileModel::Create(App *ac) const
   sql += ") ";
   values << ")";
   sql += values.str();
-  ac->CreateModel(sql);
+  
+  auto elvis = App::GetInstance();
+  elvis->CreateModel(sql);
 }
 
-void FileModel::Retrieve(App *ac) const
+void FileModel::Retrieve() const
 {
   std::string filenameValue =
       dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue();
@@ -69,7 +73,9 @@ void FileModel::Retrieve(App *ac) const
     values << m_Md5->getKey() << " = '" + md5Value + "'";
   }
   sql += values.str();
-  ac->RetrieveModel(sql);
+  
+  auto elvis = App::GetInstance();
+  elvis->RetrieveModel(sql);
 }
 
 void FileModel::Display() const

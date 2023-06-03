@@ -22,7 +22,7 @@ namespace Elvis
   public:
     virtual ~IController() = default;
 
-    void Run(std::shared_ptr<Elvis::ClientContext> c_ctx);
+    void Run(std::shared_ptr<ClientContext> c_ctx);
 
     virtual void DoStuff(std::unordered_map<std::string, std::string>
                              &deserialized_input_data) = 0;

@@ -12,7 +12,6 @@
 
 #include "controllers.h"
 #include <iostream>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>

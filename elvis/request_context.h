@@ -31,15 +31,15 @@ namespace Elvis
   {
   public:
     HttpRequestParser(std::unique_ptr<HttpResponseContext> httpResponseContext,
-                      std::shared_ptr<Elvis::IQueue> concurrentQueue,
-                      std::shared_ptr<Elvis::RouteManager> routeManager);
+                      std::shared_ptr<IQueue> concurrentQueue,
+                      std::shared_ptr<RouteManager> routeManager);
 
     virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const override;
 
   private:
     std::unique_ptr<HttpResponseContext> m_HttpResponseContext;
     std::shared_ptr<RouteManager> m_RouteManager;
-    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
+    std::shared_ptr<IQueue> m_ConcurrentQueue;
   };
 
   class WebsocketRequestParser final : public IRequestParser
@@ -47,13 +47,13 @@ namespace Elvis
   public:
     WebsocketRequestParser(
         std::unique_ptr<WebsocketResponseContext> wsResponseContext,
-        std::shared_ptr<Elvis::IQueue> concurrentQueue);
+        std::shared_ptr<IQueue> concurrentQueue);
 
     virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const override;
 
   private:
     std::unique_ptr<WebsocketResponseContext> m_WSResponseContext;
-    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
+    std::shared_ptr<IQueue> m_ConcurrentQueue;
   };
 
   class IRequestContext
@@ -79,8 +79,8 @@ namespace Elvis
   {
   public:
     HttpRequestContext(std::unique_ptr<HttpResponseContext> httpResponseContext,
-                       std::shared_ptr<Elvis::IQueue> concurrentQueue,
-                       std::shared_ptr<Elvis::RouteManager> routeManager)
+                       std::shared_ptr<IQueue> concurrentQueue,
+                       std::shared_ptr<RouteManager> routeManager)
     {
       this->m_RequestParser = std::make_unique<HttpRequestParser>(
           std::move(httpResponseContext), concurrentQueue,
@@ -93,7 +93,7 @@ namespace Elvis
   public:
     WebsocketRequestContext(
         std::unique_ptr<WebsocketResponseContext> wsResponseContext,
-        std::shared_ptr<Elvis::IQueue> concurrentQueue)
+        std::shared_ptr<IQueue> concurrentQueue)
     {
       this->m_RequestParser = std::make_unique<WebsocketRequestParser>(
           std::move(wsResponseContext), concurrentQueue); // default for now

@@ -26,37 +26,37 @@ namespace Elvis
     virtual ~ResponseCreator() = default;
 
     virtual void
-    CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const = 0;
+    CreateResponse(std::shared_ptr<ClientContext> c_ctx) const = 0;
   };
 
   class HttpResponseCreator final : public ResponseCreator
   {
   public:
     HttpResponseCreator(
-        std::shared_ptr<Elvis::IOContext> ioContext,
-        std::shared_ptr<Elvis::IQueue> concurrentQueue,
-        std::shared_ptr<Elvis::ICryptoManager> cryptoManager);
+        std::shared_ptr<IOContext> ioContext,
+        std::shared_ptr<IQueue> concurrentQueue,
+        std::shared_ptr<ICryptoManager> cryptoManager);
 
     virtual void
-    CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+    CreateResponse(std::shared_ptr<ClientContext> c_ctx) const override;
 
   private:
-    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
-    std::shared_ptr<Elvis::ICryptoManager> m_CryptoManager;
-    std::shared_ptr<Elvis::IOContext> m_IOContext;
+    std::shared_ptr<IQueue> m_ConcurrentQueue;
+    std::shared_ptr<ICryptoManager> m_CryptoManager;
+    std::shared_ptr<IOContext> m_IOContext;
   };
 
   class WebsocketResponseCreator final : public ResponseCreator
   {
   public:
-    WebsocketResponseCreator(std::shared_ptr<Elvis::IOContext> ioContext, std::shared_ptr<Elvis::IQueue> concurrentQueue);
+    WebsocketResponseCreator(std::shared_ptr<IOContext> ioContext, std::shared_ptr<IQueue> concurrentQueue);
 
     virtual void
-    CreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const override;
+    CreateResponse(std::shared_ptr<ClientContext> c_ctx) const override;
 
   private:
-    std::shared_ptr<Elvis::IOContext> m_IOContext;
-    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
+    std::shared_ptr<IOContext> m_IOContext;
+    std::shared_ptr<IQueue> m_ConcurrentQueue;
   };
 
   class IResponseContext
@@ -69,7 +69,7 @@ namespace Elvis
       m_ResponseCreator = std::move(responseCreator);
     }
 
-    void DoCreateResponse(std::shared_ptr<Elvis::ClientContext> c_ctx) const
+    void DoCreateResponse(std::shared_ptr<ClientContext> c_ctx) const
     {
       return m_ResponseCreator->CreateResponse(c_ctx);
     }
@@ -82,9 +82,9 @@ namespace Elvis
   {
   public:
     HttpResponseContext(
-        std::shared_ptr<Elvis::IOContext> ioContext,
-        std::shared_ptr<Elvis::IQueue> concurrentQueue,
-        std::shared_ptr<Elvis::ICryptoManager> cryptoManager)
+        std::shared_ptr<IOContext> ioContext,
+        std::shared_ptr<IQueue> concurrentQueue,
+        std::shared_ptr<ICryptoManager> cryptoManager)
     {
       this->m_ResponseCreator = std::make_unique<HttpResponseCreator>(ioContext, concurrentQueue, cryptoManager); // default for now
     }
@@ -93,7 +93,7 @@ namespace Elvis
   class WebsocketResponseContext final : public IResponseContext
   {
   public:
-    WebsocketResponseContext(std::shared_ptr<Elvis::IOContext> ioContext, std::shared_ptr<Elvis::IQueue> concurrentQueue)
+    WebsocketResponseContext(std::shared_ptr<IOContext> ioContext, std::shared_ptr<IQueue> concurrentQueue)
     {
       this->m_ResponseCreator = std::make_unique<WebsocketResponseCreator>(ioContext, concurrentQueue); // default for now
     }

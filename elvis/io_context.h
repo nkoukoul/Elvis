@@ -39,7 +39,7 @@ namespace Elvis
   {
   public:
     TCPContext(std::string ipaddr, int port,
-               std::shared_ptr<Elvis::IQueue> concurrentQueue, std::shared_ptr<Elvis::ILogger> logger);
+               std::shared_ptr<IQueue> concurrentQueue, std::shared_ptr<ILogger> logger);
 
     void Run() override;
 
@@ -50,8 +50,8 @@ namespace Elvis
     void DoWrite(std::shared_ptr<ClientContext> c_ctx) override;
 
   private:
-    std::shared_ptr<Elvis::IQueue> m_ConcurrentQueue;
-    std::shared_ptr<Elvis::ILogger> m_Logger;
+    std::shared_ptr<IQueue> m_ConcurrentQueue;
+    std::shared_ptr<ILogger> m_Logger;
     std::string ipaddr_;
     int port_;
     int server_sock_;

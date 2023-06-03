@@ -22,6 +22,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+using namespace Elvis;
+
 void non_block_socket(int sd)
 {
   /* set O_NONBLOCK on fd */
@@ -44,14 +46,14 @@ void non_block_with_timeout(int sd)
   timeout.tv_sec = 0;
   timeout.tv_usec = 100;
 
-  if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) 
+  if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
   {
     std::cout << "Socket set timeout failed\n";
     std::exit(EXIT_FAILURE);
   }
 }
 
-Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvis::IQueue> concurrentQueue, std::shared_ptr<Elvis::ILogger> logger)
+TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<IQueue> concurrentQueue, std::shared_ptr<ILogger> logger)
     : ipaddr_(ipaddr), port_(port), m_ConcurrentQueue{concurrentQueue}, m_Logger{logger}
 {
   struct sockaddr_in server;
@@ -68,18 +70,18 @@ Elvis::TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<Elvi
 
   if (bind(server_sock_, (struct sockaddr *)&server, sizeof(server)) < 0)
   {
-    m_Logger->Log(Elvis::LogLevel::ERROR, "Server failed to bind socket");
+    m_Logger->Log(LogLevel::ERROR, "Server failed to bind socket");
     exit(1);
   }
 
   listen(server_sock_, 5);
 }
 
-void Elvis::TCPContext::Run()
+void TCPContext::Run()
 {
   m_ConcurrentQueue->CreateTask(
       std::move(std::async(std::launch::deferred,
-                           &Elvis::IOContext::HandleConnections, this)),
+                           &IOContext::HandleConnections, this)),
       "TCPContext::Run -> IOContext::HandleConnections");
   while (true)
   {
@@ -92,12 +94,12 @@ void Elvis::TCPContext::Run()
     }
     else
     {
-      m_Logger->Log(Elvis::LogLevel::DEBUG, "No task to execute.");
+      m_Logger->Log(LogLevel::DEBUG, "No task to execute.");
     }
   }
 }
 
-void Elvis::TCPContext::HandleConnections()
+void TCPContext::HandleConnections()
 {
   struct sockaddr_in client;
   socklen_t client_len;
@@ -108,32 +110,32 @@ void Elvis::TCPContext::HandleConnections()
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      m_Logger->Log(Elvis::LogLevel::DEBUG, "No incoming connections.");
+      m_Logger->Log(LogLevel::DEBUG, "No incoming connections.");
     }
     else
     {
-      m_Logger->Log(Elvis::LogLevel::ERROR, "Error while accepting connection.");
+      m_Logger->Log(LogLevel::ERROR, "Error while accepting connection.");
     }
   }
   else
   {
-    m_Logger->Log(Elvis::LogLevel::DEBUG, "Incoming connection.");
+    m_Logger->Log(LogLevel::DEBUG, "Incoming connection.");
     non_block_with_timeout(client_socket);
     std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
     c_ctx->m_ClientSocket = client_socket;
     std::future<void> task = std::async(std::launch::deferred,
-                                        &Elvis::IOContext::DoRead, this, c_ctx);
+                                        &IOContext::DoRead, this, c_ctx);
     m_ConcurrentQueue->CreateTask(
         std::move(task), "TCPContext::HandleConnections -> IOContext::DoRead");
   }
   std::future<void> task = std::async(
-      std::launch::deferred, &Elvis::IOContext::HandleConnections, this);
+      std::launch::deferred, &IOContext::HandleConnections, this);
   m_ConcurrentQueue->CreateTask(
       std::move(task),
       "TCPContext::HandleConnections -> IOContext::HandleConnections");
 }
 
-void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
+void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 {
   char inbuffer[MAXBUF], *p = inbuffer;
   // Read data from client
@@ -187,7 +189,7 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
         std::cout << "TCPContext::DoRead: Read Blocked will try again\n";
 #endif
         std::future<void> task = std::async(
-            std::launch::deferred, &Elvis::IOContext::DoRead, this, c_ctx);
+            std::launch::deferred, &IOContext::DoRead, this, c_ctx);
         m_ConcurrentQueue->CreateTask(
             std::move(task), "TCPContext::DoRead -> IOContext::DoRead");
       }
@@ -225,13 +227,13 @@ void Elvis::TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
     }
     // maybe there some more data so add another read to the queue
     std::future<void> task = std::async(std::launch::deferred,
-                                        &Elvis::IOContext::DoRead, this, c_ctx);
+                                        &IOContext::DoRead, this, c_ctx);
     m_ConcurrentQueue->CreateTask(std::move(task),
                                   "TCPContext::DoRead -> IOContext::DoRead");
   }
 }
 
-void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
+void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 {
   int bytes_write;
   if (c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted)
@@ -289,7 +291,7 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
       std::cout << "TCPContext::DoWrite: Write block will try again\n";
 #endif
       std::future<void> task = std::async(
-          std::launch::deferred, &Elvis::IOContext::DoWrite, this, c_ctx);
+          std::launch::deferred, &IOContext::DoWrite, this, c_ctx);
       m_ConcurrentQueue->CreateTask(std::move(task), "");
     }
     else
@@ -320,7 +322,7 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
        c_ctx->m_WSBytesSend < c_ctx->m_WSResponse.size()))
   {
     std::future<void> task = std::async(
-        std::launch::deferred, &Elvis::IOContext::DoWrite, this, c_ctx);
+        std::launch::deferred, &IOContext::DoWrite, this, c_ctx);
     m_ConcurrentQueue->CreateTask(std::move(task), "");
     return;
   }
@@ -354,7 +356,7 @@ void Elvis::TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     c_ctx->m_HttpBytesSend = 0;
   }
   std::future<void> task =
-      std::async(std::launch::deferred, &Elvis::IOContext::DoRead, this, c_ctx);
+      std::async(std::launch::deferred, &IOContext::DoRead, this, c_ctx);
   m_ConcurrentQueue->CreateTask(std::move(task), "");
   return;
 }

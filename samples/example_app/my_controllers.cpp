@@ -1,8 +1,9 @@
 #include "my_controllers.h"
 #include "my_models.h"
 
+using namespace Elvis;
 // route is /file/{filename}
-FileGetController::FileGetController(App *ac_) : ac(ac_) {}
+FileGetController::FileGetController() {}
 
 void FileGetController::DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data)
 {
@@ -12,23 +13,25 @@ void FileGetController::DoStuff(std::unordered_map<std::string, std::string> &de
   // fm->filename_.set(filename);
   // fm->retrieve_model(ac);
   // fm->repr();
-  std::string controller_data = ac->GetCacheData(filename);
+  auto elvis = App::GetInstance();
+  std::string controller_data = elvis->GetCacheData(filename);
   if (controller_data.empty())
   {
     controller_data = read_from_file("", filename);
-    ac->Cache(filename, controller_data);
+    elvis->Cache(filename, controller_data);
   }
   deserialized_input_data["controller_data"] = controller_data;
 }
 
-FilePostController::FilePostController(App *ac_) : ac(ac_) {}
+FilePostController::FilePostController() {}
 // route is /file body is {"filename": "test.txt",  "md5":
 // "5f7f11f4b89befa92c9451ffa5c81184"} used to refresh or add to cache content
 void FilePostController::DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data)
 {
   // This is json data so further deserialization is needed. The result is a list of objects.
   // Here we expect only one.
-  auto input = ac->JSONDeserialize(std::move(deserialized_input_data["data"])).front();
+  auto elvis = App::GetInstance();
+  auto input = elvis->JSONDeserialize(std::move(deserialized_input_data["data"])).front();
   if (input.empty())
   {
     std::cout << "FilePostController: 400 Bad Request\n";
@@ -36,19 +39,20 @@ void FilePostController::DoStuff(std::unordered_map<std::string, std::string> &d
     return;
   }
   auto file_model = std::make_unique<FileModel>(input["filename"], input["md5sum"]);
-  file_model->Create(ac);
-  ac->Cache(input["filename"], read_from_file("", input["filename"]));
+  file_model->Create();
+  elvis->Cache(input["filename"], read_from_file("", input["filename"]));
   // cache->State();
 }
 
-TriggerPostController::TriggerPostController(App *ac_) : ac(ac_) {}
+TriggerPostController::TriggerPostController() {}
 // http request is used to trigger a broadcast to all the ws clients
 void TriggerPostController::DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data)
 {
+  auto elvis = App::GetInstance();
   // this is json data so further deserialization is needed
   std::unordered_map<std::string, std::string> input_args = {
       {"data", read_from_file("", "index.html")}, {"Connection", "open"}};
-  for (auto fd : ac->broadcast_fd_list)
+  for (auto fd : elvis->broadcast_fd_list)
   {
 
     // executor->CreateTask<std::function<void()>>(
@@ -62,7 +66,7 @@ void TriggerPostController::DoStuff(std::unordered_map<std::string, std::string>
   }
 }
 
-UserPostController::UserPostController(App *ac_) : ac(ac_) {}
+UserPostController::UserPostController() {}
 void UserPostController::DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data)
 {
   // auto input =
