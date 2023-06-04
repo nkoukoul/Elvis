@@ -15,6 +15,12 @@
 
 namespace Elvis
 {
+    enum class SocketState {
+        CONNECTED = 0,
+        READING = 1,
+        WRITING = 2
+    };
+
     struct ClientContext
     {
         int m_ClientSocket;
@@ -29,6 +35,7 @@ namespace Elvis
         std::string m_WSResponse;
         std::unordered_map<std::string, std::string> m_HttpHeaders;
         std::string m_WSData;
+        SocketState m_State; 
     };
 } // namespace Elvis
 #endif // CLIENT_CONTEXT_H

@@ -20,6 +20,7 @@
 #include "queue.h"
 #include "request_context.h"
 #include "route_manager.h"
+#include "monitor.h"
 #include "utils.h"
 
 namespace Elvis
@@ -69,6 +70,7 @@ namespace Elvis
     std::unique_ptr<ICacheManager> m_CacheManager;
     std::shared_ptr<ILogger> m_Logger;
     std::shared_ptr<ICryptoManager> m_CryptoManager;
+    std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
 
     friend class TCPContext;
   };

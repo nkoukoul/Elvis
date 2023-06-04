@@ -26,7 +26,8 @@ void App::Configure(std::string ipaddr, int port, std::shared_ptr<RouteManager> 
 #endif
   m_Logger = std::make_shared<Logger>(logfile, loglevel);
   m_ConcurrentQueue = std::make_shared<ConcurrentQueue>(100);
-  m_IOContext = std::make_shared<TCPContext>(ipaddr, port, m_ConcurrentQueue, m_Logger);
+  m_ConnectionMonitor = std::make_shared<ConnectionMonitor>();
+  m_IOContext = std::make_shared<TCPContext>(ipaddr, port, m_ConcurrentQueue, m_Logger, m_ConnectionMonitor);
   auto httpResponseContext = std::make_unique<HttpResponseContext>(m_IOContext, m_ConcurrentQueue, m_CryptoManager);
   m_HTTPRequestContext = std::make_shared<HttpRequestContext>(std::move(httpResponseContext), m_ConcurrentQueue, routeManager);
   auto wsResponseContext = std::make_unique<WebsocketResponseContext>(m_IOContext, m_ConcurrentQueue);

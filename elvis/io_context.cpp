@@ -53,8 +53,11 @@ inline void non_block_with_timeout(int sd)
   }
 }
 
-TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<IQueue> concurrentQueue, std::shared_ptr<ILogger> logger)
-    : ipaddr_(ipaddr), port_(port), m_ConcurrentQueue{concurrentQueue}, m_Logger{logger}
+TCPContext::TCPContext(std::string ipaddr, int port,
+                       std::shared_ptr<IQueue> concurrentQueue,
+                       std::shared_ptr<ILogger> logger,
+                       std::shared_ptr<IConnectionMonitor> connectionMonitor)
+    : ipaddr_(ipaddr), port_(port), m_ConcurrentQueue{concurrentQueue}, m_Logger{logger}, m_ConnectionMonitor{connectionMonitor}
 {
   struct sockaddr_in server;
 
@@ -86,7 +89,7 @@ void TCPContext::Run()
   while (true)
   {
     std::future<void> task;
-    auto hasTask = m_ConcurrentQueue->RunTask(task);
+    auto hasTask = m_ConcurrentQueue->PickTask(task);
     if (hasTask)
     {
       task.wait();
@@ -122,6 +125,8 @@ void TCPContext::HandleConnections()
     non_block_with_timeout(client_socket);
     std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
     c_ctx->m_ClientSocket = client_socket;
+    c_ctx->m_State = SocketState::CONNECTED;
+    m_ConnectionMonitor->AddConnection(c_ctx);
     std::future<void> task = std::async(std::launch::deferred,
                                         &IOContext::DoRead, this, c_ctx);
     m_ConcurrentQueue->CreateTask(
@@ -136,6 +141,7 @@ void TCPContext::HandleConnections()
 
 void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 {
+  c_ctx->m_State = SocketState::READING;
   char inbuffer[MAXBUF], *p = inbuffer;
   // Read data from client
   int bytes_read = read(c_ctx->m_ClientSocket, inbuffer, MAXBUF);
@@ -146,6 +152,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
   {
     m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: No bytes closing socket " + std::to_string(c_ctx->m_ClientSocket));
     close(c_ctx->m_ClientSocket);
+    m_ConnectionMonitor->RemoveConnection(c_ctx);
     return;
   }
   if (bytes_read < 0)
@@ -190,6 +197,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       // TCP read error
       m_Logger->Log(LogLevel::ERROR, "TCPContext::DoRead: Read Error, closing socket " + std::to_string(c_ctx->m_ClientSocket));
       close(c_ctx->m_ClientSocket);
+      m_ConnectionMonitor->RemoveConnection(c_ctx);
       return;
     }
   }
@@ -223,6 +231,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
 
 void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
 {
+  c_ctx->m_State = SocketState::WRITING;
   int bytes_write;
   if (c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted)
   {
@@ -269,6 +278,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     m_Logger->Log(LogLevel::INFO,
                   "TCPContext::DoWrite: No bytes written, Client closed connection, closing connection on socket " + std::to_string(c_ctx->m_ClientSocket));
     close(c_ctx->m_ClientSocket);
+    m_ConnectionMonitor->RemoveConnection(c_ctx);
     return;
   }
 
@@ -287,6 +297,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
       // TCP write error
       m_Logger->Log(LogLevel::ERROR, "TCPContext::DoWrite: Write error closing connection on socket " + std::to_string(c_ctx->m_ClientSocket));
       close(c_ctx->m_ClientSocket);
+      m_ConnectionMonitor->RemoveConnection(c_ctx);
     }
     return;
   }
@@ -317,6 +328,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   {
     m_Logger->Log(LogLevel::INFO, "TCPContext::DoWrite: Should close socket " + std::to_string(c_ctx->m_ClientSocket));
     close(c_ctx->m_ClientSocket);
+    m_ConnectionMonitor->RemoveConnection(c_ctx);
     return;
   }
 
