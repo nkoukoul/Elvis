@@ -24,7 +24,7 @@
 
 using namespace Elvis;
 
-void non_block_socket(int sd)
+inline void non_block_socket(int sd)
 {
   /* set O_NONBLOCK on fd */
   int flags = fcntl(sd, F_GETFL, 0);
@@ -40,7 +40,7 @@ void non_block_socket(int sd)
   }
 }
 
-void non_block_with_timeout(int sd)
+inline void non_block_with_timeout(int sd)
 {
   struct timeval timeout;
   timeout.tv_sec = 0;
@@ -70,7 +70,7 @@ TCPContext::TCPContext(std::string ipaddr, int port, std::shared_ptr<IQueue> con
 
   if (bind(server_sock_, (struct sockaddr *)&server, sizeof(server)) < 0)
   {
-    m_Logger->Log(LogLevel::ERROR, "Server failed to bind socket");
+    m_Logger->Log(LogLevel::ERROR, "Server failed to bind socket, terminating application…");
     exit(1);
   }
 
@@ -85,7 +85,6 @@ void TCPContext::Run()
       "TCPContext::Run -> IOContext::HandleConnections");
   while (true)
   {
-    // std::cout << "Looping\n";
     std::future<void> task;
     auto hasTask = m_ConcurrentQueue->RunTask(task);
     if (hasTask)
@@ -94,7 +93,7 @@ void TCPContext::Run()
     }
     else
     {
-      m_Logger->Log(LogLevel::DEBUG, "No task to execute.");
+      m_Logger->Log(LogLevel::DETAIL, "No task to execute.");
     }
   }
 }
@@ -110,7 +109,7 @@ void TCPContext::HandleConnections()
   {
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-      m_Logger->Log(LogLevel::DEBUG, "No incoming connections.");
+      m_Logger->Log(LogLevel::DETAIL, "No incoming connections.");
     }
     else
     {
@@ -119,7 +118,7 @@ void TCPContext::HandleConnections()
   }
   else
   {
-    m_Logger->Log(LogLevel::DEBUG, "Incoming connection.");
+    m_Logger->Log(LogLevel::INFO, "Incoming connection on socket descriptor " + std::to_string(client_socket));
     non_block_with_timeout(client_socket);
     std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
     c_ctx->m_ClientSocket = client_socket;
@@ -140,17 +139,12 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
   char inbuffer[MAXBUF], *p = inbuffer;
   // Read data from client
   int bytes_read = read(c_ctx->m_ClientSocket, inbuffer, MAXBUF);
-#ifdef DEBUG
-  std::cout << "TCPContext::DoRead: Incoming Socket byte count " << bytes_read
-            << "\n";
-#endif
+  m_Logger->Log(LogLevel::DETAIL,
+                "TCPContext::DoRead: Incoming Socket byte count " + std::to_string(bytes_read) + " on socket " + std::to_string(c_ctx->m_ClientSocket));
   // Client closed connection
   if (bytes_read == 0)
   {
-#ifdef DEBUG
-    std::cout << "TCPContext::DoRead: No bytes closing socket " << bytes_read
-              << "\n";
-#endif
+    m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: No bytes closing socket " + std::to_string(c_ctx->m_ClientSocket));
     close(c_ctx->m_ClientSocket);
     return;
   }
@@ -162,7 +156,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       // if is websocket and has data proceed to parsing
       if (c_ctx->m_IsWebsocketConnection && c_ctx->m_WSMessage.size())
       {
-        std::cout << "TCPContext::DoRead: Websocket Read Finished\n";
+        m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: Websocket Read Finished with data.");
         auto app = App::GetInstance();
         std::future<void> task =
             std::async(std::launch::deferred, &IRequestContext::DoParse,
@@ -172,9 +166,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       } // if is http and has data proceed to parsing
       else if (!c_ctx->m_IsWebsocketConnection && c_ctx->m_HttpMessage.size())
       {
-#ifdef DEBUG
-        std::cout << "TCPContext::DoRead: HTTP Read Finished\n";
-#endif
+        m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: HTTP Read Finished with data");
         c_ctx->m_HttpMessage += '\n'; // add end of line for getline
         auto app = App::GetInstance();
         std::future<void> task =
@@ -185,9 +177,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       } // read simply blocked with no data try again
       else
       {
-#ifdef DEBUG
-        std::cout << "TCPContext::DoRead: Read Blocked will try again\n";
-#endif
+        m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: Read Blocked will try again");
         std::future<void> task = std::async(
             std::launch::deferred, &IOContext::DoRead, this, c_ctx);
         m_ConcurrentQueue->CreateTask(
@@ -198,7 +188,7 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
     else
     {
       // TCP read error
-      std::cout << "TCPContext::DoRead: Read Error\n";
+      m_Logger->Log(LogLevel::ERROR, "TCPContext::DoRead: Read Error, closing socket " + std::to_string(c_ctx->m_ClientSocket));
       close(c_ctx->m_ClientSocket);
       return;
     }
@@ -207,9 +197,8 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
   {
     if (c_ctx->m_IsWebsocketConnection)
     {
-#ifdef DEBUG
-      std::cout << "TCPContext::DoRead: We have ws data to Read\n";
-#endif
+      m_Logger->Log(LogLevel::INFO,
+                    "TCPContext::DoRead: Websocket " + std::to_string(c_ctx->m_ClientSocket) + " has " + std::to_string(bytes_read) + " bytes to read");
       for (int i = 0; i < bytes_read; i++)
       {
         c_ctx->m_WSMessage += inbuffer[i];
@@ -217,9 +206,8 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
     }
     else
     {
-#ifdef DEBUG
-      std::cout << "TCPContext::DoRead: We have http to Read\n";
-#endif
+      m_Logger->Log(LogLevel::INFO,
+                    "TCPContext::DoRead: HTTP socket " + std::to_string(c_ctx->m_ClientSocket) + " has " + std::to_string(bytes_read) + " bytes to read");
       for (int i = 0; i < bytes_read; i++)
       {
         c_ctx->m_HttpMessage += inbuffer[i];
@@ -238,6 +226,8 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   int bytes_write;
   if (c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted)
   {
+    m_Logger->Log(LogLevel::DETAIL,
+                  "TCPContext::DoWrite: WS Response " + c_ctx->m_WSResponse + "\n with size " + std::to_string(c_ctx->m_WSResponse.size()));
     size_t bytes_to_send;
     if (MAXBUF > (c_ctx->m_WSResponse.size() - c_ctx->m_WSBytesSend))
     {
@@ -250,14 +240,14 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     bytes_write = write(c_ctx->m_ClientSocket,
                         c_ctx->m_WSResponse.c_str() + c_ctx->m_WSBytesSend,
                         bytes_to_send);
+    m_Logger->Log(LogLevel::INFO,
+                  "TCPContext::DoWrite: WS Response wrote " + std::to_string(bytes_write) + " bytes on socket " + std::to_string(c_ctx->m_ClientSocket));
   }
   else
   {
+    m_Logger->Log(LogLevel::DETAIL,
+                  "TCPContext::DoWrite: HTTP Response " + c_ctx->m_HttpResponse + "\n with size " + std::to_string(c_ctx->m_HttpResponse.size()));
     size_t bytes_to_send;
-#ifdef DEBUG
-    std::cout << "TCPContext::DoWrite: HTTP Response " << c_ctx->m_HttpResponse
-              << "\n with size " << c_ctx->m_HttpResponse.size() << "\n";
-#endif
     if (MAXBUF > (c_ctx->m_HttpResponse.size() - c_ctx->m_HttpBytesSend))
     {
       bytes_to_send = c_ctx->m_HttpResponse.size() - c_ctx->m_HttpBytesSend;
@@ -269,15 +259,15 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     bytes_write = write(c_ctx->m_ClientSocket,
                         c_ctx->m_HttpResponse.c_str() + c_ctx->m_HttpBytesSend,
                         bytes_to_send);
+    m_Logger->Log(LogLevel::INFO,
+                  "TCPContext::DoWrite: HTTP Response wrote " + std::to_string(bytes_write) + " bytes on socket " + std::to_string(c_ctx->m_ClientSocket));
   }
 
   // Client closed connection
   if (bytes_write == 0)
   {
-#ifdef DEBUG
-    std::cout << "TCPContext::DoWrite: No bytes written, Client closed "
-                 "connection, closing connection\n";
-#endif
+    m_Logger->Log(LogLevel::INFO,
+                  "TCPContext::DoWrite: No bytes written, Client closed connection, closing connection on socket " + std::to_string(c_ctx->m_ClientSocket));
     close(c_ctx->m_ClientSocket);
     return;
   }
@@ -287,9 +277,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   { // Write block try again
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
-#ifdef DEBUG
-      std::cout << "TCPContext::DoWrite: Write block will try again\n";
-#endif
+      m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoWrite: Write block will try again on socket " + std::to_string(c_ctx->m_ClientSocket));
       std::future<void> task = std::async(
           std::launch::deferred, &IOContext::DoWrite, this, c_ctx);
       m_ConcurrentQueue->CreateTask(std::move(task), "");
@@ -297,7 +285,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     else
     {
       // TCP write error
-      std::cout << "TCPContext::DoWrite: Write error closing connection\n";
+      m_Logger->Log(LogLevel::ERROR, "TCPContext::DoWrite: Write error closing connection on socket " + std::to_string(c_ctx->m_ClientSocket));
       close(c_ctx->m_ClientSocket);
     }
     return;
@@ -310,9 +298,6 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   }
   else
   {
-#ifdef DEBUG
-    std::cout << "TCPContext::DoWrite: HTTP there is data to write.\n";
-#endif
     c_ctx->m_HttpBytesSend += bytes_write;
   }
 
@@ -321,6 +306,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
       (c_ctx->m_IsWebsocketConnection && c_ctx->m_IsHandshakeCompleted &&
        c_ctx->m_WSBytesSend < c_ctx->m_WSResponse.size()))
   {
+    m_Logger->Log(LogLevel::INFO, "TCPContext::DoWrite: There is more data to write on socket " + std::to_string(c_ctx->m_ClientSocket));
     std::future<void> task = std::async(
         std::launch::deferred, &IOContext::DoWrite, this, c_ctx);
     m_ConcurrentQueue->CreateTask(std::move(task), "");
@@ -329,9 +315,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   // Check if socket should close
   if (c_ctx->m_ShouldCloseConnection)
   {
-#ifdef DEBUG
-    std::cout << "TCPContext::DoWrite: Socket should close\n";
-#endif
+    m_Logger->Log(LogLevel::INFO, "TCPContext::DoWrite: Should close socket " + std::to_string(c_ctx->m_ClientSocket));
     close(c_ctx->m_ClientSocket);
     return;
   }
@@ -339,6 +323,7 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   // if socket is still open with http keep-alive or ws read again
   if (c_ctx->m_IsWebsocketConnection)
   {
+    m_Logger->Log(LogLevel::INFO, "TCPContext::DoWrite: WS connection on socket " + std::to_string(c_ctx->m_ClientSocket) + " will schedule another read");
     if (!c_ctx->m_IsHandshakeCompleted)
     {
       // Add socket to broadcast list, disabled atm.
@@ -352,11 +337,13 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
   }
   else
   {
+    m_Logger->Log(LogLevel::INFO,
+                  "TCPContext::DoWrite: HTTP with keepAlive connection on socket " + std::to_string(c_ctx->m_ClientSocket) + " will schedule another read");
     c_ctx->m_HttpMessage.clear();
     c_ctx->m_HttpBytesSend = 0;
   }
   std::future<void> task =
       std::async(std::launch::deferred, &IOContext::DoRead, this, c_ctx);
-  m_ConcurrentQueue->CreateTask(std::move(task), "");
+  m_ConcurrentQueue->CreateTask(std::move(task), "TCPContext::DoWrite -> IOContext::DoRead");
   return;
 }

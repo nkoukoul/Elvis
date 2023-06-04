@@ -29,8 +29,8 @@ inline const char *ToString(LogLevel level)
 {
     switch (level)
     {
-    case LogLevel::DEBUG:
-        return "Debug";
+    case LogLevel::DETAIL:
+        return "Detail";
     case LogLevel::INFO:
         return "Info";
     case LogLevel::WARNING:
@@ -45,12 +45,12 @@ void Logger::Log(LogLevel logLevel, std::string message)
     std::lock_guard<std::mutex> guard(m_LogLock);
 #ifdef CONSOLE
     std::cout << daytime_() << " - " << ToString(logLevel) << " - "
-              << message << "\n";
+              << message << std::endl;
 #else
     if (!(logLevel < m_Level))
     {
         m_LogFile << daytime_() << " - " << ToString(logLevel) << " - "
-                  << message << std::endl;
+                  << message <<  "\n";
     }
 #endif
 }

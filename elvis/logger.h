@@ -18,7 +18,7 @@ namespace Elvis
 {
   enum class LogLevel
   {
-    DEBUG = 0,
+    DETAIL = 0,
     INFO = 1,
     WARNING = 2,
     ERROR = 3

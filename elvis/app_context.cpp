@@ -16,7 +16,7 @@ using namespace Elvis;
 App *App::app_instance_{nullptr};
 std::mutex App::app_mutex_;
 
-void App::Configure(std::string ipaddr, int port, std::shared_ptr<RouteManager> routeManager, std::string logfile, LogLevel loglevel = LogLevel::DEBUG)
+void App::Configure(std::string ipaddr, int port, std::shared_ptr<RouteManager> routeManager, std::string logfile, LogLevel loglevel = LogLevel::DETAIL)
 {
   std::lock_guard<std::mutex> guard(app_mutex_);
 #ifdef USE_CRYPTO
