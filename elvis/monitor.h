@@ -11,11 +11,13 @@
 #define MONITOR_H
 
 #include "client_context.h"
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace Elvis
 {
@@ -23,24 +25,32 @@ namespace Elvis
     {
     public:
         virtual ~IConnectionMonitor() = default;
+
+        virtual void Run() = 0;
         virtual void AddConnection(std::shared_ptr<ClientContext> connection) = 0;
         virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) = 0;
-
-        virtual void DisplayOpenConnections() = 0;
+        virtual void DisplayOpenConnections() const = 0;
     };
 
-    class ConnectionMonitor final: public IConnectionMonitor
+    class ConnectionMonitor final : public IConnectionMonitor
     {
     public:
-        ConnectionMonitor();
+        ConnectionMonitor(size_t intervalInSeconds);
+        ConnectionMonitor() = delete;
+        ~ConnectionMonitor();
 
+        virtual void Run() override;
         virtual void AddConnection(std::shared_ptr<ClientContext> connection) override;
         virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) override;
+        virtual void DisplayOpenConnections() const override;
 
-        virtual void DisplayOpenConnections() override;
     private:
         std::unordered_set<std::shared_ptr<ClientContext>> m_ActiveConnections;
         mutable std::mutex m_ConnectionMonitorLock;
+        std::thread m_Thread;
+        size_t m_Interval;
+        std::condition_variable m_CV;
+        bool m_Quit;
     };
 }
 
