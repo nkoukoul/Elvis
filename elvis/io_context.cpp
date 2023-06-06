@@ -86,19 +86,6 @@ void TCPContext::Run()
       std::move(std::async(std::launch::deferred,
                            &IOContext::HandleConnections, this)),
       "TCPContext::Run -> IOContext::HandleConnections");
-  while (true)
-  {
-    std::future<void> task;
-    auto hasTask = m_ConcurrentQueue->PickTask(task);
-    if (hasTask)
-    {
-      task.wait();
-    }
-    else
-    {
-      m_Logger->Log(LogLevel::DETAIL, "No task to execute.");
-    }
-  }
 }
 
 void TCPContext::HandleConnections()

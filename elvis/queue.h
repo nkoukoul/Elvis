@@ -20,6 +20,8 @@
 #include <shared_mutex>
 #include <string>
 #include <queue>
+#include <vector>
+#include <thread>
 
 namespace Elvis
 {
@@ -31,7 +33,7 @@ namespace Elvis
 
     virtual ~IQueue() = default;
 
-    virtual bool PickTask(std::future<void> &task) = 0;
+    virtual void Run() = 0;
 
     virtual void CreateTask(std::future<void> event, std::string taskType) = 0;
   };
@@ -39,107 +41,80 @@ namespace Elvis
   class ConcurrentQueue final : public IQueue
   {
   public:
-    ConcurrentQueue(int const capacity) : m_Capacity(capacity) {}
-
-    virtual bool PickTask(std::future<void> &task) override
+    ConcurrentQueue(const int capacity, const size_t threadNumber) : m_ThreadNumber{threadNumber}, m_Capacity{capacity}, m_Quit{false}
     {
-      // std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
-      wlock lock(m_SharedMutex);
-      if (!m_ConcurrentQueue.empty())
-      {
-        auto pair = std::move(m_ConcurrentQueue.front());
-#ifdef DEBUG
-        std::cout << "ConcurrentQueue::PickTask " << pair.second << "\n";
-#endif
-        task = std::move(pair.first);
-        m_ConcurrentQueue.pop_front();
-        return true;
-      }
-      return false;
+      m_ThreadPool.reserve(m_ThreadNumber);
     }
 
-    virtual void CreateTask(std::future<void> task,
-                            std::string taskType) override
-    {
-      // std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
-      wlock lock(m_SharedMutex);
-#ifdef DEBUG
-      std::cout << "ConcurrentQueue::CreateTask " << taskType << "\n";
-#endif
-      m_ConcurrentQueue.emplace_back(std::make_pair(std::move(task), taskType));
-    }
-
-  private:
-    std::mutex m_ConcurrentQueueLock;
-    mutable std::shared_mutex m_SharedMutex;
-    std::list<std::pair<std::future<void>, std::string>> m_ConcurrentQueue;
-    const int m_Capacity;
-  };
-
-  class AsyncQueue final : public IQueue
-  {
-  public:
-    AsyncQueue() : m_Quit{false}
-    {
-      std::unique_lock<std::mutex> lock(m_Lock);
-      do
-      {
-        m_CV.wait(lock, [this]
-                  { return (m_Quit || m_AsyncQueue.size()); });
-        if (m_Quit)
-        {
-          break;
-        }
-        std::future<void> task;
-        auto hasTask = PickTask(task);
-        if (hasTask)
-        {
-          lock.unlock();
-          task.wait();
-          lock.lock();
-        }
-      } while (!m_Quit);
-    }
-
-    ~AsyncQueue()
+    ~ConcurrentQueue()
     {
       // Signal to dispatch threads that it's time to wrap up
       {
-        std::lock_guard<std::mutex> lock(m_Lock);
+        std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
         m_Quit = true;
       }
       m_CV.notify_all();
     }
 
-    virtual bool PickTask(std::future<void> &task)
+    virtual void Run() override
     {
-      if (m_AsyncQueue.size())
+      for (auto i = 0; i < m_ThreadNumber; i++)
       {
-        auto pair = std::move(m_AsyncQueue.front());
+        m_ThreadPool.emplace_back([this]()
+                                  {
+          std::unique_lock<std::mutex> lock(this->m_ConcurrentQueueLock);
+          do
+          {
+            std::future<void> task;
+            m_CV.wait(lock, [this, &task]
+                      { return (this->m_Quit || this->m_ConcurrentQueue.size()); });
+            if (!this->m_Quit)
+            {
+              auto pair = std::move(this->m_ConcurrentQueue.front());
+              this->m_ConcurrentQueue.pop_front();
 #ifdef DEBUG
-        std::cout << "AsyncQueue::PickTask " << pair.second << "\n";
+              std::cout << "ConcurrentQueue::PickTask " << pair.second << "\n";
 #endif
-        task = std::move(pair.first);
-        m_AsyncQueue.pop();
-        return true;
+              task = std::move(pair.first);
+
+              lock.unlock();
+              task.wait();
+              lock.lock();
+            }
+          } while (!m_Quit); });
       }
-      return false;
+
+      // Block until all the threads exit
+      for (auto &t : m_ThreadPool)
+      {
+        if (t.joinable())
+        {
+          t.join();
+        }
+      }
     }
 
-    virtual void CreateTask(std::future<void> task, std::string taskType)
+    virtual void CreateTask(std::future<void> task,
+                            std::string taskType) override
     {
-      std::unique_lock<std::mutex> lock(m_Lock);
-      m_AsyncQueue.emplace(std::make_pair(std::move(task), taskType));
-      lock.unlock();
+      {
+        std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
+#ifdef DEBUG
+        std::cout << "ConcurrentQueue::CreateTask " << taskType << "\n";
+#endif
+        m_ConcurrentQueue.emplace_back(std::make_pair(std::move(task), taskType));
+      }
       m_CV.notify_one();
     }
 
   private:
     bool m_Quit;
-    std::queue<std::pair<std::future<void>, std::string>> m_AsyncQueue;
-    std::mutex m_Lock;
+    const int m_Capacity;
+    size_t m_ThreadNumber;
+    std::vector<std::thread> m_ThreadPool;
+    std::mutex m_ConcurrentQueueLock;
+    std::list<std::pair<std::future<void>, std::string>> m_ConcurrentQueue;
     std::condition_variable m_CV;
   };
-
 } // namespace Elvis
 #endif // QUEUE_H

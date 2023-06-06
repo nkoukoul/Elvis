@@ -37,7 +37,7 @@ namespace Elvis
     // This is the static method that controls the access to the singleton
     static App *GetInstance();
 
-    void Configure(std::string ipaddr, int port, std::shared_ptr<RouteManager> routeManager, std::string logfile, LogLevel loglevel);
+    void Configure(std::string ipaddr, int port, int threadNumber, std::shared_ptr<RouteManager> routeManager, std::string logfile, LogLevel loglevel);
 
     void Cache(std::string key, std::string data);
 
@@ -49,7 +49,7 @@ namespace Elvis
 
     void RetrieveModel(std::string query);
 
-    void Run(int thread_number);
+    void Run();
 
     static std::mutex app_mutex_;
     std::vector<int> broadcast_fd_list;
