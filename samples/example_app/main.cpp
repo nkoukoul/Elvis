@@ -34,11 +34,11 @@ int main(int argc, char *argv[])
         std::move(std::make_unique<UserPostController>()));
     // Application context is injected with the http request and response handler,
     // the websocket request and response handler the route manager and json/utils
-    elvis->Configure(ipaddr, port, routeManager, "server.log", Elvis::LogLevel::INFO);
+    elvis->Configure(ipaddr, port, thread_number, routeManager, "server.log", Elvis::LogLevel::INFO);
 
     std::cout << "server accepting connections on " << ipaddr << ":" << port
               << "\n";
 
-    elvis->Run(thread_number);
+    elvis->Run();
     return 0;
 }
