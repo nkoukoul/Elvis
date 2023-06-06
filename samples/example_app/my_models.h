@@ -4,14 +4,14 @@
 #include <elvis/app_context.h>
 #include <elvis/models.h>
 
-class FileModel : IModel {
+class FileModel final: IModel {
 private:
   std::unique_ptr<Attribute<std::string>> m_Filename;
   std::unique_ptr<Attribute<std::string>> m_Md5;
 
 public:
   FileModel() = delete;
-  FileModel(std::string filename, std::string md5);
+  explicit FileModel(std::string filename, std::string md5);
 
   virtual void Create() const override;
 

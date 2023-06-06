@@ -8,33 +8,33 @@
 #include <string>
 #include <unordered_map>
 
-class FileGetController : public Elvis::IController
+class FileGetController final: public Elvis::IController
 {
 public:
-  FileGetController();
+  explicit FileGetController();
 
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
-class FilePostController : public Elvis::IController
+class FilePostController final: public Elvis::IController
 {
 public:
-  FilePostController();
+  explicit FilePostController();
 
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
-class TriggerPostController : public Elvis::IController
+class TriggerPostController final: public Elvis::IController
 {
 public:
-  TriggerPostController();
+  explicit TriggerPostController();
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 
-class UserPostController : public Elvis::IController
+class UserPostController final: public Elvis::IController
 {
 public:
-  UserPostController();
+  explicit UserPostController();
   void DoStuff(std::unordered_map<std::string, std::string> &deserialized_input_data) override;
 };
 #endif // MY_CONTROLLERS_H
