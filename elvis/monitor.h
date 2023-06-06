@@ -52,6 +52,29 @@ namespace Elvis
         std::condition_variable m_CV;
         bool m_Quit;
     };
+
+    class MockConnectionMonitor final : public IConnectionMonitor
+    {
+    public:
+        MockConnectionMonitor() = default;
+        ~MockConnectionMonitor() = default;
+
+        virtual void Run() override
+        {
+        }
+
+        virtual void AddConnection(std::shared_ptr<ClientContext> connection) override
+        {
+        }
+
+        virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) override
+        {
+        }
+
+        virtual void DisplayOpenConnections() const override
+        {
+        }
+    };
 }
 
 #endif // MONITOR_H

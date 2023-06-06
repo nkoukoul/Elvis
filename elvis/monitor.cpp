@@ -46,7 +46,6 @@ void ConnectionMonitor::AddConnection(std::shared_ptr<ClientContext> connection)
         m_ActiveConnections.insert(connection);
     }
     m_CV.notify_one();
-    return;
 }
 
 void ConnectionMonitor::RemoveConnection(std::shared_ptr<ClientContext> connection)
@@ -56,7 +55,6 @@ void ConnectionMonitor::RemoveConnection(std::shared_ptr<ClientContext> connecti
         m_ActiveConnections.erase(connection);
     }
     m_CV.notify_one();
-    return;
 }
 
 inline const char *ToString(SocketState state)
