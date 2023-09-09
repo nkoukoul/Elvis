@@ -14,6 +14,7 @@
 #include <bitset>
 #include <csignal>
 #include <iostream>
+#include <future>
 #include <netinet/in.h>
 #include <sstream>
 #include <stdio.h>
@@ -60,7 +61,6 @@ TCPContext::TCPContext(std::string ipaddr, int port,
     : ipaddr_(ipaddr), port_(port), m_ConcurrentQueue{concurrentQueue}, m_Logger{logger}, m_ConnectionMonitor{connectionMonitor}
 {
   struct sockaddr_in server;
-
   server_sock_ = socket(AF_INET, SOCK_STREAM, PF_UNSPEC);
 #ifdef __APPLE__
   non_block_socket(server_sock_);
@@ -78,6 +78,11 @@ TCPContext::TCPContext(std::string ipaddr, int port,
   }
 
   listen(server_sock_, 5);
+}
+
+void TCPContext::SetHTTPInputDelegate(std::weak_ptr<InputContextDelegate> inputDelegate)
+{
+  m_HTTPInputDelegate = inputDelegate;
 }
 
 void TCPContext::Run()
@@ -162,12 +167,11 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       {
         m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: HTTP Read Finished with data");
         c_ctx->m_HttpMessage += '\n'; // add end of line for getline
-        auto app = App::GetInstance();
-        std::future<void> task =
-            std::async(std::launch::deferred, &IRequestContext::DoParse,
-                       app->m_HTTPRequestContext.get(), c_ctx);
-        m_ConcurrentQueue->CreateTask(
-            std::move(task), "TCPContext::DoRead -> IRequestContext::DoParse");
+        auto inputDelegate = m_HTTPInputDelegate.lock();
+        if (inputDelegate)
+        {
+          inputDelegate->DidRead(c_ctx);
+        }
       } // read simply blocked with no data try again
       else
       {

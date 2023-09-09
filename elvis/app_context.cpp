@@ -36,6 +36,7 @@ void App::Configure(std::string ipaddr, int port, int threadNumber,
   m_IOContext = std::make_shared<TCPContext>(ipaddr, port, m_ConcurrentQueue, m_Logger, m_ConnectionMonitor);
   auto httpResponseContext = std::make_unique<HttpResponseContext>(m_IOContext, m_ConcurrentQueue, m_CryptoManager);
   m_HTTPRequestContext = std::make_shared<HttpRequestContext>(std::move(httpResponseContext), m_ConcurrentQueue, routeManager);
+  m_IOContext->SetHTTPInputDelegate(m_HTTPRequestContext);
   auto wsResponseContext = std::make_unique<WebsocketResponseContext>(m_IOContext, m_ConcurrentQueue);
   m_WSRequestContext = std::make_unique<WebsocketRequestContext>(std::move(wsResponseContext), m_ConcurrentQueue);
   m_JSONContext = std::make_unique<JSONContext>();

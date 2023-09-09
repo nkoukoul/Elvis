@@ -11,6 +11,7 @@
 #define REQUEST_CONTEXT_H
 
 #include "client_context.h"
+#include "context_delegate.h"
 #include "queue.h"
 #include "response_context.h"
 #include "route_manager.h"
@@ -75,8 +76,10 @@ namespace Elvis
     std::unique_ptr<IRequestParser> m_RequestParser;
   };
 
-  class HttpRequestContext final : public IRequestContext
+  class HttpRequestContext final : public InputContextDelegate
   {
+  private:
+    std::unique_ptr<IRequestParser> m_RequestParser;
   public:
     HttpRequestContext(std::unique_ptr<HttpResponseContext> httpResponseContext,
                        std::shared_ptr<IQueue> concurrentQueue,
@@ -85,6 +88,11 @@ namespace Elvis
       this->m_RequestParser = std::make_unique<HttpRequestParser>(
           std::move(httpResponseContext), concurrentQueue,
           routeManager); // default for now
+    }
+
+    virtual void DidRead(std::shared_ptr<ClientContext> c_ctx) override
+    {
+      return m_RequestParser->Parse(c_ctx);
     }
   };
 

@@ -11,6 +11,7 @@
 #define IO_CONTEXT_H
 
 #include "client_context.h"
+#include "context_delegate.h"
 #include "monitor.h"
 #include "queue.h"
 #include "logger.h"
@@ -44,18 +45,21 @@ namespace Elvis
                std::shared_ptr<ILogger> logger,
                std::shared_ptr<IConnectionMonitor> connectionMonitor);
 
-    void Run() override;
+    virtual void Run() override;
 
-    void HandleConnections() override;
+    virtual void HandleConnections() override;
 
-    void DoRead(std::shared_ptr<ClientContext> c_ctx) override;
+    virtual void DoRead(std::shared_ptr<ClientContext> c_ctx) override;
 
-    void DoWrite(std::shared_ptr<ClientContext> c_ctx) override;
+    virtual void DoWrite(std::shared_ptr<ClientContext> c_ctx) override;
+
+    void SetHTTPInputDelegate(std::weak_ptr<InputContextDelegate> inputDelegate);
 
   private:
     std::shared_ptr<IQueue> m_ConcurrentQueue;
     std::shared_ptr<ILogger> m_Logger;
     std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
+    std::weak_ptr<InputContextDelegate> m_HTTPInputDelegate;
     std::string ipaddr_;
     int port_;
     int server_sock_;
