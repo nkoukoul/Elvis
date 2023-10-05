@@ -87,10 +87,16 @@ void TCPContext::SetHTTPInputDelegate(std::weak_ptr<InputContextDelegate> inputD
 
 void TCPContext::Run()
 {
-  m_ConcurrentQueue->CreateTask(
-      std::move(std::async(std::launch::deferred,
-                           &IOContext::HandleConnections, this)),
-      "TCPContext::Run -> IOContext::HandleConnections");
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->HandleConnections();
+    }
+  },
+  "TCPContext::Run -> TCPContext::HandleConnections");
 }
 
 void TCPContext::HandleConnections()
@@ -100,18 +106,7 @@ void TCPContext::HandleConnections()
   client_len = sizeof client;
   int client_socket =
       accept(server_sock_, (struct sockaddr *)&client, &client_len);
-  if (client_socket <= 0)
-  {
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
-      m_Logger->Log(LogLevel::DETAIL, "No incoming connections.");
-    }
-    else
-    {
-      m_Logger->Log(LogLevel::ERROR, "Error while accepting connection.");
-    }
-  }
-  else
+  if (client_socket > 0)
   {
     m_Logger->Log(LogLevel::INFO, "Incoming connection on socket descriptor " + std::to_string(client_socket));
     non_block_with_timeout(client_socket);
@@ -119,16 +114,35 @@ void TCPContext::HandleConnections()
     c_ctx->m_ClientSocket = client_socket;
     c_ctx->m_State = SocketState::CONNECTED;
     m_ConnectionMonitor->AddConnection(c_ctx);
-    std::future<void> task = std::async(std::launch::deferred,
-                                        &IOContext::DoRead, this, c_ctx);
-    m_ConcurrentQueue->CreateTask(
-        std::move(task), "TCPContext::HandleConnections -> IOContext::DoRead");
+    auto weakSelf = weak_from_this();
+    m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+    {
+      auto self = weakSelf.lock();
+      if (self)
+      {
+        self->DoRead(c_ctx);
+      }
+    },
+    "TCPContext::HandleConnections -> TCPContext::DoRead");
   }
-  std::future<void> task = std::async(
-      std::launch::deferred, &IOContext::HandleConnections, this);
-  m_ConcurrentQueue->CreateTask(
-      std::move(task),
-      "TCPContext::HandleConnections -> IOContext::HandleConnections");
+  if (errno == EAGAIN || errno == EWOULDBLOCK)
+  {
+    m_Logger->Log(LogLevel::DETAIL, "No incoming connections.");
+  }
+  else
+  {
+    m_Logger->Log(LogLevel::ERROR, "Error while accepting connection.");
+  }
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->HandleConnections();
+    }
+  },
+  "TCPContext::HandleConnections -> TCPContext::HandleConnections");  
 }
 
 void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
@@ -156,12 +170,13 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       if (c_ctx->m_IsWebsocketConnection && c_ctx->m_WSMessage.size())
       {
         m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: Websocket Read Finished with data.");
-        auto app = App::GetInstance();
-        std::future<void> task =
-            std::async(std::launch::deferred, &IRequestContext::DoParse,
-                       app->m_WSRequestContext.get(), c_ctx);
-        m_ConcurrentQueue->CreateTask(
-            std::move(task), "TCPContext::DoRead -> IRequestContext::DoParse");
+        m_ConcurrentQueue->DispatchAsync([c_ctx]()
+        {
+          auto app = App::GetInstance();
+          app->m_WSRequestContext->DoParse(c_ctx);
+        },
+        "TCPContext::DoRead -> WSRequestContext::DoParse");
+        return;
       } // if is http and has data proceed to parsing
       else if (!c_ctx->m_IsWebsocketConnection && c_ctx->m_HttpMessage.size())
       {
@@ -172,14 +187,21 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
         {
           inputDelegate->DidRead(c_ctx);
         }
+        return;
       } // read simply blocked with no data try again
       else
       {
         m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: Read Blocked will try again");
-        std::future<void> task = std::async(
-            std::launch::deferred, &IOContext::DoRead, this, c_ctx);
-        m_ConcurrentQueue->CreateTask(
-            std::move(task), "TCPContext::DoRead -> IOContext::DoRead");
+        auto weakSelf = weak_from_this();
+        m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+        {
+          auto self = weakSelf.lock();
+          if (self)
+          {
+            self->DoRead(c_ctx);
+          }
+        },
+        "TCPContext::DoRead -> TCPContext::DoRead");
       }
       return;
     }
@@ -213,10 +235,17 @@ void TCPContext::DoRead(std::shared_ptr<ClientContext> c_ctx)
       }
     }
     // maybe there some more data so add another read to the queue
-    std::future<void> task = std::async(std::launch::deferred,
-                                        &IOContext::DoRead, this, c_ctx);
-    m_ConcurrentQueue->CreateTask(std::move(task),
-                                  "TCPContext::DoRead -> IOContext::DoRead");
+    auto weakSelf = weak_from_this();
+    m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+    {
+      auto self = weakSelf.lock();
+      if (self)
+      {
+        self->DoRead(c_ctx);
+      }
+    },
+    "TCPContext::DoRead -> TCPContext::DoRead");
+    
   }
 }
 
@@ -279,9 +308,16 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     if (errno == EAGAIN || errno == EWOULDBLOCK)
     {
       m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoWrite: Write block will try again on socket " + std::to_string(c_ctx->m_ClientSocket));
-      std::future<void> task = std::async(
-          std::launch::deferred, &IOContext::DoWrite, this, c_ctx);
-      m_ConcurrentQueue->CreateTask(std::move(task), "");
+      auto weakSelf = weak_from_this();
+      m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+      {
+        auto self = weakSelf.lock();
+        if (self)
+        {
+          self->DoWrite(c_ctx);
+        }
+      },
+      "TCPContext::DoWrite -> TCPContext::DoWrite");
     }
     else
     {
@@ -309,9 +345,16 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
        c_ctx->m_WSBytesSend < c_ctx->m_WSResponse.size()))
   {
     m_Logger->Log(LogLevel::INFO, "TCPContext::DoWrite: There is more data to write on socket " + std::to_string(c_ctx->m_ClientSocket));
-    std::future<void> task = std::async(
-        std::launch::deferred, &IOContext::DoWrite, this, c_ctx);
-    m_ConcurrentQueue->CreateTask(std::move(task), "");
+    auto weakSelf = weak_from_this();
+    m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+    {
+      auto self = weakSelf.lock();
+      if (self)
+      {
+        self->DoWrite(c_ctx);
+      }
+    },
+    "TCPContext::DoWrite -> TCPContext::DoWrite");
     return;
   }
   // Check if socket should close
@@ -345,8 +388,15 @@ void TCPContext::DoWrite(std::shared_ptr<ClientContext> c_ctx)
     c_ctx->m_HttpMessage.clear();
     c_ctx->m_HttpBytesSend = 0;
   }
-  std::future<void> task =
-      std::async(std::launch::deferred, &IOContext::DoRead, this, c_ctx);
-  m_ConcurrentQueue->CreateTask(std::move(task), "TCPContext::DoWrite -> IOContext::DoRead");
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->DoRead(c_ctx);
+    }
+  },
+  "TCPContext::DoWrite -> TCPContext::DoRead");
   return;
 }

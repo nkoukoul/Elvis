@@ -22,7 +22,7 @@ void HttpRequestParser::Parse(
     std::shared_ptr<ClientContext> c_ctx) const
 {
 #ifdef DEBUG
-  std::cout << "HttpRequestParser::Parse: " << c_ctx->m_HttpMessage << "\n";
+  // std::cout << "HttpRequestParser::Parse: " << c_ctx->m_HttpMessage << "\n";
 #endif
   std::istringstream ss(c_ctx->m_HttpMessage);
   std::string request_type, url, protocol, line;
@@ -67,29 +67,25 @@ void HttpRequestParser::Parse(
   {
     c_ctx->m_HttpHeaders["status"] = "200 OK";
     c_ctx->m_HttpHeaders["controller_data"] = "";
-    // std::future<void> task = std::async(std::launch::deferred,
-    // &IController::Run, ic, c_ctx, application_context_);
-    // application_context_->m_ConcurrentQueue->CreateTask(std::move(task),
-    // "HttpRequestParser::Parse -> IController::Run");
+    // Run Controller
     ic->Run(c_ctx);
-    std::future<void> task = std::async(
-        std::launch::deferred, &IResponseContext::DoCreateResponse,
-        m_HttpResponseContext.get(), c_ctx);
-    m_ConcurrentQueue->CreateTask(
-        std::move(task),
-        "IController::Run -> IResponseContext::DoCreateResponse");
+    ////////////////
   }
   else
   {
     c_ctx->m_HttpHeaders["status"] = "400 Bad Request";
     c_ctx->m_HttpHeaders["controller_data"] = "Url or method not supported";
-    std::future<void> task = std::async(
-        std::launch::deferred, &IResponseContext::DoCreateResponse,
-        m_HttpResponseContext.get(), c_ctx);
-    m_ConcurrentQueue->CreateTask(
-        std::move(task),
-        "HttpRequestParser::Parse ->IResponseContext::DoCreateResponse");
   }
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->m_HttpResponseContext->DoCreateResponse(c_ctx);
+    }
+  },
+  "HTTPRequestParser::Parse -> HTTPResponseContext::DoCreateResponse");
 }
 
 WebsocketRequestParser::WebsocketRequestParser(
@@ -154,8 +150,14 @@ void WebsocketRequestParser::Parse(
   }
   // echo functionality for now
   c_ctx->m_WSData = std::move(unmasked_payload_data);
-  std::future<void> task = std::async(
-      std::launch::deferred, &IResponseContext::DoCreateResponse,
-      m_WSResponseContext.get(), c_ctx);
-  m_ConcurrentQueue->CreateTask(std::move(task), "");
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->m_WSResponseContext->DoCreateResponse(c_ctx);
+    }
+  },
+  "WebsocketRequestParser::Parse -> WebsocketResponseContext::DoCreateResponse");
 }

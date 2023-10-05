@@ -37,7 +37,7 @@ namespace Elvis
     virtual void DoWrite(std::shared_ptr<ClientContext> c_ctx) = 0;
   };
 
-  class TCPContext final : public IOContext
+  class TCPContext final : public std::enable_shared_from_this<TCPContext>, public IOContext
   {
   public:
     TCPContext(std::string ipaddr, int port,

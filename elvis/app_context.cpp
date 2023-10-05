@@ -29,7 +29,7 @@ void App::Configure(std::string ipaddr, int port, int threadNumber,
   m_Logger = std::make_shared<Logger>(logfile, loglevel);
   m_ConcurrentQueue = std::make_shared<ConcurrentQueue>(100, threadNumber);
 #ifdef DEBUG
-  m_ConnectionMonitor = std::make_shared<ConnectionMonitor>(5);
+  m_ConnectionMonitor = std::make_shared<ConnectionMonitor>(1);
 #else
   m_ConnectionMonitor = std::make_shared<MockConnectionMonitor>();
 #endif

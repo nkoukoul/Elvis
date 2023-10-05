@@ -29,7 +29,7 @@ namespace Elvis
     CreateResponse(std::shared_ptr<ClientContext> c_ctx) const = 0;
   };
 
-  class HttpResponseCreator final : public ResponseCreator
+  class HttpResponseCreator final : public std::enable_shared_from_this<HttpResponseCreator>, public ResponseCreator
   {
   public:
     HttpResponseCreator(
@@ -46,7 +46,7 @@ namespace Elvis
     std::shared_ptr<IOContext> m_IOContext;
   };
 
-  class WebsocketResponseCreator final : public ResponseCreator
+  class WebsocketResponseCreator final : public std::enable_shared_from_this<WebsocketResponseCreator>, public ResponseCreator
   {
   public:
     WebsocketResponseCreator(std::shared_ptr<IOContext> ioContext, std::shared_ptr<IQueue> concurrentQueue);
@@ -64,9 +64,9 @@ namespace Elvis
   public:
     virtual ~IResponseContext() = default;
 
-    void setResponseCreator(std::unique_ptr<ResponseCreator> responseCreator)
+    void setResponseCreator(std::shared_ptr<ResponseCreator> responseCreator)
     {
-      m_ResponseCreator = std::move(responseCreator);
+      m_ResponseCreator = responseCreator;
     }
 
     void DoCreateResponse(std::shared_ptr<ClientContext> c_ctx) const
@@ -75,7 +75,7 @@ namespace Elvis
     }
 
   protected:
-    std::unique_ptr<ResponseCreator> m_ResponseCreator;
+    std::shared_ptr<ResponseCreator> m_ResponseCreator;
   };
 
   class HttpResponseContext final : public IResponseContext
@@ -86,7 +86,7 @@ namespace Elvis
         std::shared_ptr<IQueue> concurrentQueue,
         std::shared_ptr<ICryptoManager> cryptoManager)
     {
-      this->m_ResponseCreator = std::make_unique<HttpResponseCreator>(ioContext, concurrentQueue, cryptoManager); // default for now
+      this->m_ResponseCreator = std::make_shared<HttpResponseCreator>(ioContext, concurrentQueue, cryptoManager); // default for now
     }
   };
 
@@ -95,7 +95,7 @@ namespace Elvis
   public:
     WebsocketResponseContext(std::shared_ptr<IOContext> ioContext, std::shared_ptr<IQueue> concurrentQueue)
     {
-      this->m_ResponseCreator = std::make_unique<WebsocketResponseCreator>(ioContext, concurrentQueue); // default for now
+      this->m_ResponseCreator = std::make_shared<WebsocketResponseCreator>(ioContext, concurrentQueue); // default for now
     }
   };
 } // namespace Elvis

@@ -28,12 +28,12 @@ namespace Elvis
     virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const = 0;
   };
 
-  class HttpRequestParser final : public IRequestParser
+  class HttpRequestParser final : public std::enable_shared_from_this<HttpRequestParser>, public IRequestParser
   {
   public:
-    HttpRequestParser(std::unique_ptr<HttpResponseContext> httpResponseContext,
-                      std::shared_ptr<IQueue> concurrentQueue,
-                      std::shared_ptr<RouteManager> routeManager);
+    explicit HttpRequestParser(std::unique_ptr<HttpResponseContext> httpResponseContext,
+                               std::shared_ptr<IQueue> concurrentQueue,
+                               std::shared_ptr<RouteManager> routeManager);
 
     virtual void Parse(std::shared_ptr<ClientContext> c_ctx) const override;
 
@@ -43,7 +43,7 @@ namespace Elvis
     std::shared_ptr<IQueue> m_ConcurrentQueue;
   };
 
-  class WebsocketRequestParser final : public IRequestParser
+  class WebsocketRequestParser final : public std::enable_shared_from_this<WebsocketRequestParser>, public IRequestParser
   {
   public:
     WebsocketRequestParser(
@@ -79,15 +79,14 @@ namespace Elvis
   class HttpRequestContext final : public InputContextDelegate
   {
   private:
-    std::unique_ptr<IRequestParser> m_RequestParser;
+    std::shared_ptr<IRequestParser> m_RequestParser;
+
   public:
-    HttpRequestContext(std::unique_ptr<HttpResponseContext> httpResponseContext,
-                       std::shared_ptr<IQueue> concurrentQueue,
-                       std::shared_ptr<RouteManager> routeManager)
+    explicit HttpRequestContext(std::unique_ptr<HttpResponseContext> httpResponseContext,
+                                std::shared_ptr<IQueue> concurrentQueue,
+                                std::shared_ptr<RouteManager> routeManager) : 
+                                m_RequestParser{std::make_shared<HttpRequestParser>(std::move(httpResponseContext), concurrentQueue, routeManager)}
     {
-      this->m_RequestParser = std::make_unique<HttpRequestParser>(
-          std::move(httpResponseContext), concurrentQueue,
-          routeManager); // default for now
     }
 
     virtual void DidRead(std::shared_ptr<ClientContext> c_ctx) override

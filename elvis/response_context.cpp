@@ -25,7 +25,7 @@ void HttpResponseCreator::CreateResponse(
   std::string sec_websocket_key;
   bool close_connection;
 #ifdef DEBUG
-  std::cout << "HttpResponseCreator::CreateResponse\n";
+  // std::cout << "HttpResponseCreator::CreateResponse\n";
 #endif
   if (c_ctx->m_HttpHeaders.find("Connection") != c_ctx->m_HttpHeaders.end() &&
       c_ctx->m_HttpHeaders["Connection"] == "Upgrade" &&
@@ -92,12 +92,16 @@ void HttpResponseCreator::CreateResponse(
   }
 
   c_ctx->m_HttpBytesSend = 0;
-  std::future<void> event =
-      std::async(std::launch::deferred, &IOContext::DoWrite,
-                 m_IOContext.get(), c_ctx);
-  m_ConcurrentQueue->CreateTask(
-      std::move(event),
-      "HttpResponseCreator::CreateResponse -> IOContext::DoWrite");
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->m_IOContext->DoWrite(c_ctx);
+    }
+  },
+  "HttpResponseCreator::CreateResponse -> TCPContext::DoWrite");
 }
 
 WebsocketResponseCreator::WebsocketResponseCreator(std::shared_ptr<IOContext> ioContext,
@@ -144,8 +148,14 @@ void WebsocketResponseCreator::CreateResponse(
     c_ctx->m_WSResponse += (unsigned char)(c_ctx->m_WSData.size());
   }
   c_ctx->m_WSResponse += c_ctx->m_WSData;
-  std::future<void> event =
-      std::async(std::launch::deferred, &IOContext::DoWrite,
-                 m_IOContext.get(), c_ctx);
-  m_ConcurrentQueue->CreateTask(std::move(event), "");
+  auto weakSelf = weak_from_this();
+  m_ConcurrentQueue->DispatchAsync([weakSelf, c_ctx]()
+  {
+    auto self = weakSelf.lock();
+    if (self)
+    {
+      self->m_IOContext->DoWrite(c_ctx);
+    }
+  },
+  "WebsocketResponseCreator::CreateResponse -> TCPContext::DoWrite");
 }

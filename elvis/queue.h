@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <condition_variable>
+#include <functional>
 #include <future>
 #include <iostream>
 #include <list>
@@ -35,7 +36,7 @@ namespace Elvis
 
     virtual void Run() = 0;
 
-    virtual void CreateTask(std::future<void> event, std::string taskType) = 0;
+    virtual void DispatchAsync(std::function<void()> callback, std::string description) = 0;
   };
 
   class ConcurrentQueue final : public IQueue
@@ -65,20 +66,18 @@ namespace Elvis
           std::unique_lock<std::mutex> lock(this->m_ConcurrentQueueLock);
           do
           {
-            std::future<void> task;
-            m_CV.wait(lock, [this, &task]
+            m_CV.wait(lock, [this]
                       { return (this->m_Quit || this->m_ConcurrentQueue.size()); });
             if (!this->m_Quit)
             {
-              auto pair = std::move(this->m_ConcurrentQueue.front());
+              auto pair = this->m_ConcurrentQueue.front();
               this->m_ConcurrentQueue.pop_front();
 #ifdef DEBUG
-              std::cout << "ConcurrentQueue::PickTask " << pair.second << "\n";
+              // std::cout << "ConcurrentQueue::PickTask " << pair.second << "\n";
 #endif
-              task = std::move(pair.first);
-
+              auto callback = pair.first;
               lock.unlock();
-              task.wait();
+              callback();
               lock.lock();
             }
           } while (!m_Quit); });
@@ -94,15 +93,14 @@ namespace Elvis
       }
     }
 
-    virtual void CreateTask(std::future<void> task,
-                            std::string taskType) override
+    virtual void DispatchAsync(std::function<void()> callback, std::string description) override
     {
       {
         std::lock_guard<std::mutex> lock(m_ConcurrentQueueLock);
 #ifdef DEBUG
-        std::cout << "ConcurrentQueue::CreateTask " << taskType << "\n";
+        // std::cout << "ConcurrentQueue::DispatchAsync " << description << "\n";
 #endif
-        m_ConcurrentQueue.emplace_back(std::make_pair(std::move(task), taskType));
+        m_ConcurrentQueue.emplace_back(std::make_pair(callback, description));
       }
       m_CV.notify_one();
     }
@@ -113,7 +111,7 @@ namespace Elvis
     size_t m_ThreadNumber;
     std::vector<std::thread> m_ThreadPool;
     std::mutex m_ConcurrentQueueLock;
-    std::list<std::pair<std::future<void>, std::string>> m_ConcurrentQueue;
+    std::list<std::pair<std::function<void()>, std::string>> m_ConcurrentQueue;
     std::condition_variable m_CV;
   };
 } // namespace Elvis
