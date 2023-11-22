@@ -21,60 +21,60 @@
 
 namespace Elvis
 {
-    class IConnectionMonitor
+class IConnectionMonitor
+{
+public:
+    virtual ~IConnectionMonitor() = default;
+
+    virtual void Run() = 0;
+    virtual void AddConnection(std::shared_ptr<ClientContext> connection) = 0;
+    virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) = 0;
+    virtual void DisplayOpenConnections() const = 0;
+};
+
+class ConnectionMonitor final : public IConnectionMonitor
+{
+public:
+    ConnectionMonitor(size_t intervalInSeconds);
+    ConnectionMonitor() = delete;
+    ~ConnectionMonitor();
+
+    virtual void Run() override;
+    virtual void AddConnection(std::shared_ptr<ClientContext> connection) override;
+    virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) override;
+    virtual void DisplayOpenConnections() const override;
+
+private:
+    std::unordered_set<std::shared_ptr<ClientContext>> m_ActiveConnections;
+    mutable std::mutex m_ConnectionMonitorLock;
+    std::thread m_Thread;
+    size_t m_Interval;
+    std::condition_variable m_CV;
+    bool m_Quit;
+};
+
+class MockConnectionMonitor final : public IConnectionMonitor
+{
+public:
+    MockConnectionMonitor() = default;
+    ~MockConnectionMonitor() = default;
+
+    virtual void Run() override
     {
-    public:
-        virtual ~IConnectionMonitor() = default;
+    }
 
-        virtual void Run() = 0;
-        virtual void AddConnection(std::shared_ptr<ClientContext> connection) = 0;
-        virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) = 0;
-        virtual void DisplayOpenConnections() const = 0;
-    };
-
-    class ConnectionMonitor final : public IConnectionMonitor
+    virtual void AddConnection(std::shared_ptr<ClientContext> connection) override
     {
-    public:
-        ConnectionMonitor(size_t intervalInSeconds);
-        ConnectionMonitor() = delete;
-        ~ConnectionMonitor();
+    }
 
-        virtual void Run() override;
-        virtual void AddConnection(std::shared_ptr<ClientContext> connection) override;
-        virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) override;
-        virtual void DisplayOpenConnections() const override;
-
-    private:
-        std::unordered_set<std::shared_ptr<ClientContext>> m_ActiveConnections;
-        mutable std::mutex m_ConnectionMonitorLock;
-        std::thread m_Thread;
-        size_t m_Interval;
-        std::condition_variable m_CV;
-        bool m_Quit;
-    };
-
-    class MockConnectionMonitor final : public IConnectionMonitor
+    virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) override
     {
-    public:
-        MockConnectionMonitor() = default;
-        ~MockConnectionMonitor() = default;
+    }
 
-        virtual void Run() override
-        {
-        }
-
-        virtual void AddConnection(std::shared_ptr<ClientContext> connection) override
-        {
-        }
-
-        virtual void RemoveConnection(std::shared_ptr<ClientContext> connection) override
-        {
-        }
-
-        virtual void DisplayOpenConnections() const override
-        {
-        }
-    };
-}
+    virtual void DisplayOpenConnections() const override
+    {
+    }
+};
+} // namespace Elvis
 
 #endif // MONITOR_H

@@ -4,27 +4,28 @@
 using namespace Elvis;
 using namespace std::chrono_literals;
 
-ConnectionMonitor::ConnectionMonitor(size_t intervalInSeconds) : m_Interval{intervalInSeconds}, m_Quit{false}
+ConnectionMonitor::ConnectionMonitor(size_t intervalInSeconds)
+    : m_Interval{intervalInSeconds}
+    , m_Quit{false}
 {
 }
 
 void ConnectionMonitor::Run()
 {
-    m_Thread = std::thread([this]()
-                           {
+    m_Thread = std::thread([this]() {
         std::unique_lock<std::mutex> lock(this->m_ConnectionMonitorLock);
-        do 
+        do
         {
-             m_CV.wait_for(lock, this->m_Interval * 1s, [this]
-             {
+            m_CV.wait_for(lock, this->m_Interval * 1s, [this] {
                 return (this->m_Quit);
-             });
+            });
             if (!this->m_Quit)
             {
                 this->DisplayOpenConnections();
             }
         } while (!this->m_Quit);
-        std::cout << "************ Connection Monitor: Quitting ************\n"; });
+        std::cout << "************ Connection Monitor: Quitting ************\n";
+    });
 }
 
 ConnectionMonitor::~ConnectionMonitor()
@@ -57,7 +58,7 @@ void ConnectionMonitor::RemoveConnection(std::shared_ptr<ClientContext> connecti
     m_CV.notify_one();
 }
 
-inline const char *ToString(SocketState state)
+inline const char* ToString(SocketState state)
 {
     switch (state)
     {
@@ -75,7 +76,7 @@ inline const char *ToString(SocketState state)
 void ConnectionMonitor::DisplayOpenConnections() const
 {
     std::cout << "**************** Connection Monitor *****************\n";
-    for (const auto &connection : m_ActiveConnections)
+    for (const auto& connection : m_ActiveConnections)
     {
         std::cout << "Socket " << connection->m_ClientSocket << " on State " << ToString(connection->m_State) << "\n";
     }

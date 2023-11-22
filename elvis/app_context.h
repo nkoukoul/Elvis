@@ -17,33 +17,38 @@
 #include "io_context.h"
 #include "json_utils.h"
 #include "logger.h"
-#include "queue.h"
-#include "request_context.h"
-#include "route_manager.h"
 #include "monitor.h"
+#include "queue.h"
+#include "route_manager.h"
 #include "utils.h"
 
 namespace Elvis
 {
-  class App
-  {
-  public:
+class App
+{
+public:
     // Singletons should not be cloneable.
-    App(App &other) = delete;
+    App(App& other) = delete;
 
     // Singletons should not be assignable.
-    void operator=(const App &) = delete;
+    void operator=(const App&) = delete;
 
     // This is the static method that controls the access to the singleton
-    static App *GetInstance();
+    static App* GetInstance();
 
-    void Configure(std::string ipaddr, int port, int threadNumber, std::shared_ptr<RouteManager> routeManager, std::string logfile, LogLevel loglevel);
+    void Configure(
+        std::string ipaddr,
+        int port,
+        int threadNumber,
+        std::shared_ptr<RouteManager> routeManager,
+        std::string logfile,
+        LogLevel loglevel);
 
     void Cache(std::string key, std::string data);
 
     std::string GetCacheData(std::string key) const;
 
-    std::list<std::unordered_map<std::string, std::string>> JSONDeserialize(std::string &&serializedData) const;
+    std::list<std::unordered_map<std::string, std::string>> JSONDeserialize(std::string&& serializedData) const;
 
     void CreateModel(std::string query);
 
@@ -54,17 +59,15 @@ namespace Elvis
     static std::mutex app_mutex_;
     std::vector<int> broadcast_fd_list;
 
-  protected:
+protected:
     App() = default;
     ~App() = default;
 
-  private:
-    static App *app_instance_;
+private:
+    static App* app_instance_;
     std::vector<std::thread> thread_pool_;
     std::shared_ptr<IQueue> m_ConcurrentQueue;
-    std::shared_ptr<TCPContext> m_IOContext;
-    std::shared_ptr<HttpRequestContext> m_HTTPRequestContext;
-    std::unique_ptr<WebsocketRequestContext> m_WSRequestContext;
+    std::shared_ptr<IServer> m_TCPServer;
     std::unique_ptr<IJSONContext> m_JSONContext;
     std::unique_ptr<IDBEngine> m_DBEngine;
     std::unique_ptr<ICacheManager> m_CacheManager;
@@ -73,7 +76,7 @@ namespace Elvis
     std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
 
     friend class TCPContext;
-  };
-}
+};
+} // namespace Elvis
 
 #endif // APP_CONTEXT_H
