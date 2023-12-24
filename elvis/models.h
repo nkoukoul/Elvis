@@ -15,53 +15,60 @@
 class IAttribute
 {
 public:
-  virtual ~IAttribute() = default;
+    virtual ~IAttribute() = default;
 
-  template <class T>
-  T getValue();
+    template <class T> T getValue();
 
-  template <class T>
-  void setValue(T value);
+    template <class T> void setValue(T value);
 
-  virtual std::string getKey() const = 0;
-  virtual void setKey(std::string key) = 0;
+    virtual std::string getKey() const = 0;
+    virtual void setKey(std::string key) = 0;
 };
 
-template <class T>
-class Attribute : public IAttribute
+template <class T> class Attribute : public IAttribute
 {
 private:
-  T m_Value;
-  std::string m_Key;
+    T m_Value;
+    std::string m_Key;
 
 public:
-  T getValue() { return m_Value; }
+    T getValue()
+    {
+        return m_Value;
+    }
 
-  void setValue(T value) { m_Value = value; }
+    void setValue(T value)
+    {
+        m_Value = value;
+    }
 
-  virtual std::string getKey() const override { return m_Key; }
+    virtual std::string getKey() const override
+    {
+        return m_Key;
+    }
 
-  virtual void setKey(std::string key) override { m_Key = key; }
+    virtual void setKey(std::string key) override
+    {
+        m_Key = key;
+    }
 };
 
-template <class T>
-T IAttribute::getValue()
+template <class T> T IAttribute::getValue()
 {
-  return static_cast<Attribute<T> *>(this)->getValue();
+    return static_cast<Attribute<T>*>(this)->getValue();
 }
 
-template <class T>
-void IAttribute::setValue(T value)
+template <class T> void IAttribute::setValue(T value)
 {
-  static_cast<Attribute<T> *>(this)->setValue(value);
+    static_cast<Attribute<T>*>(this)->setValue(value);
 }
 
 class IModel
 {
 public:
-  virtual void Create() const = 0;
-  virtual void Retrieve() const = 0;
-  virtual void Display() const = 0;
+    virtual void Create() const = 0;
+    virtual void Retrieve() const = 0;
+    virtual void Display() const = 0;
 };
 
 #endif // MODELS_H

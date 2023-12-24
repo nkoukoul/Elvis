@@ -11,9 +11,12 @@
 #define IO_CONTEXT_H
 
 #include "client_context.h"
+#include "context_delegate.h"
+#include "crypto_manager.h"
+#include "logger.h"
 #include "monitor.h"
 #include "queue.h"
-#include "logger.h"
+#include "route_manager.h"
 #include <fcntl.h>
 #include <memory>
 #include <mutex>
@@ -22,44 +25,33 @@
 
 namespace Elvis
 {
-  class IOContext
-  {
-  public:
-    virtual ~IOContext() = default;
-
+struct IServer
+{
+    virtual ~IServer() = default;
     virtual void Run() = 0;
-
     virtual void HandleConnections() = 0;
+};
 
+struct InputContext
+{
+    virtual ~InputContext() = default;
     virtual void DoRead(std::shared_ptr<ClientContext> c_ctx) = 0;
+};
 
+struct OutputContext
+{
+    virtual ~OutputContext() = default;
     virtual void DoWrite(std::shared_ptr<ClientContext> c_ctx) = 0;
-  };
+    virtual void SetTCPInputDelegate(std::weak_ptr<InputContextDelegate> inputDelegate) = 0;
+};
 
-  class TCPContext final : public IOContext
-  {
-  public:
-    TCPContext(std::string ipaddr, int port,
-               std::shared_ptr<IQueue> concurrentQueue,
-               std::shared_ptr<ILogger> logger,
-               std::shared_ptr<IConnectionMonitor> connectionMonitor);
-
-    void Run() override;
-
-    void HandleConnections() override;
-
-    void DoRead(std::shared_ptr<ClientContext> c_ctx) override;
-
-    void DoWrite(std::shared_ptr<ClientContext> c_ctx) override;
-
-  private:
-    std::shared_ptr<IQueue> m_ConcurrentQueue;
-    std::shared_ptr<ILogger> m_Logger;
-    std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
-    std::string ipaddr_;
-    int port_;
-    int server_sock_;
-    static const int MAXBUF = 1024;
-  };
+std::shared_ptr<IServer> CreateTCPServer(
+    std::string ipAddress,
+    int port,
+    std::shared_ptr<RouteManager> routeManager,
+    std::shared_ptr<ICryptoManager> cryptoManager,
+    std::shared_ptr<IQueue> concurrentQueue,
+    std::shared_ptr<ILogger> logger,
+    std::shared_ptr<IConnectionMonitor> connectionMonitor);
 } // namespace Elvis
 #endif // IO_CONTEXT_H

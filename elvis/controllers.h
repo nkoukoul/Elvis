@@ -17,15 +17,14 @@
 
 namespace Elvis
 {
-  class IController
-  {
-  public:
+class IController
+{
+public:
     virtual ~IController() = default;
 
     void Run(std::shared_ptr<ClientContext> c_ctx);
 
-    virtual void DoStuff(std::unordered_map<std::string, std::string>
-                             &deserialized_input_data) = 0;
-  };
+    virtual void DoStuff(std::unordered_map<std::string, std::string>& deserialized_input_data) = 0;
+};
 } // namespace Elvis
 #endif // CONTROLLERS_H

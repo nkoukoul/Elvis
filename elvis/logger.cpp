@@ -14,7 +14,9 @@
 
 using namespace Elvis;
 
-Logger::Logger(const std::string& filename, LogLevel level): m_Filename{filename}, m_Level{level}
+Logger::Logger(const std::string& filename, LogLevel level)
+    : m_Filename{filename}
+    , m_Level{level}
 {
     assert(!m_Filename.empty() && "Log filename is not empty");
     m_LogFile.open(filename, std::ios::out | std::ios::binary | std::ios::ate | std::ios::app);
@@ -25,7 +27,7 @@ Logger::~Logger()
     m_LogFile.close();
 }
 
-inline const char *ToString(LogLevel level)
+inline const char* ToString(LogLevel level)
 {
     switch (level)
     {
@@ -44,13 +46,11 @@ void Logger::Log(LogLevel logLevel, std::string message)
 {
     std::lock_guard<std::mutex> guard(m_LogLock);
 #ifdef CONSOLE
-    std::cout << daytime_() << " - " << ToString(logLevel) << " - "
-              << message << std::endl;
+    std::cout << daytime_() << " - " << ToString(logLevel) << " - " << message << std::endl;
 #else
     if (!(logLevel < m_Level))
     {
-        m_LogFile << daytime_() << " - " << ToString(logLevel) << " - "
-                  << message <<  "\n";
+        m_LogFile << daytime_() << " - " << ToString(logLevel) << " - " << message << "\n";
     }
 #endif
 }

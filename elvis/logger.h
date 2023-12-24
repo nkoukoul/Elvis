@@ -16,36 +16,36 @@
 
 namespace Elvis
 {
-  enum class LogLevel
-  {
+enum class LogLevel
+{
     DETAIL = 0,
     INFO = 1,
     WARNING = 2,
     ERROR = 3
-  };
+};
 
-  class ILogger
-  {
-  public:
+class ILogger
+{
+public:
     virtual ~ILogger() = default;
 
     virtual void Log(LogLevel logLevel, std::string message) = 0;
-  };
+};
 
-  class Logger final : public ILogger
-  {
-  public:
+class Logger final : public ILogger
+{
+public:
     Logger() = delete;
     Logger(const std::string& filename, LogLevel level);
     ~Logger();
 
     virtual void Log(LogLevel logLevel, std::string message) override;
 
-  private:
+private:
     LogLevel m_Level;
     std::mutex m_LogLock;
     std::ofstream m_LogFile;
     const std::string m_Filename;
-  };
+};
 } // namespace Elvis
 #endif // LOGGER_H

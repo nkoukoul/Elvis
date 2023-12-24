@@ -12,5 +12,5 @@ using namespace Elvis;
 
 void IController::Run(std::shared_ptr<ClientContext> c_ctx)
 {
-  DoStuff(c_ctx->m_HttpHeaders);
+    DoStuff(c_ctx->m_HttpHeaders);
 }
