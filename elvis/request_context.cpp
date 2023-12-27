@@ -12,10 +12,8 @@
 using namespace Elvis;
 HttpRequestParser::HttpRequestParser(
     std::unique_ptr<HttpResponseContext> httpResponseContext,
-    std::shared_ptr<IQueue> concurrentQueue,
     std::shared_ptr<RouteManager> routeManager)
     : m_HttpResponseContext{std::move(httpResponseContext)}
-    , m_ConcurrentQueue{concurrentQueue}
     , m_RouteManager{routeManager}
 {
 }
@@ -74,23 +72,12 @@ void HttpRequestParser::Parse(std::shared_ptr<ClientContext> c_ctx) const
         c_ctx->m_HttpHeaders["status"] = "400 Bad Request";
         c_ctx->m_HttpHeaders["controller_data"] = "Url or method not supported";
     }
-    auto weakSelf = weak_from_this();
-    m_ConcurrentQueue->DispatchAsync(
-        [weakSelf, c_ctx]() {
-            auto self = weakSelf.lock();
-            if (self)
-            {
-                self->m_HttpResponseContext->DoCreateResponse(c_ctx);
-            }
-        },
-        "HTTPRequestParser::Parse -> HTTPResponseContext::DoCreateResponse");
+
+    m_HttpResponseContext->DoCreateResponse(c_ctx);
 }
 
-WebsocketRequestParser::WebsocketRequestParser(
-    std::unique_ptr<WebsocketResponseContext> wsResponseContext,
-    std::shared_ptr<IQueue> concurrentQueue)
+WebsocketRequestParser::WebsocketRequestParser(std::unique_ptr<WebsocketResponseContext> wsResponseContext)
     : m_WSResponseContext{std::move(wsResponseContext)}
-    , m_ConcurrentQueue{concurrentQueue}
 {
 }
 
@@ -146,14 +133,6 @@ void WebsocketRequestParser::Parse(std::shared_ptr<ClientContext> c_ctx) const
     }
     // echo functionality for now
     c_ctx->m_WSData = std::move(unmasked_payload_data);
-    auto weakSelf = weak_from_this();
-    m_ConcurrentQueue->DispatchAsync(
-        [weakSelf, c_ctx]() {
-            auto self = weakSelf.lock();
-            if (self)
-            {
-                self->m_WSResponseContext->DoCreateResponse(c_ctx);
-            }
-        },
-        "WebsocketRequestParser::Parse -> WebsocketResponseContext::DoCreateResponse");
+
+    m_WSResponseContext->DoCreateResponse(c_ctx);
 }
