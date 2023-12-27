@@ -60,7 +60,7 @@ private:
     std::string m_IPAddress;
     int m_Port;
     std::shared_ptr<InputContext> m_TCPInputContext;
-    std::shared_ptr<IQueue> m_ConcurrentQueue;
+    std::shared_ptr<IQueue> m_SerialQueue;
     std::shared_ptr<ILogger> m_Logger;
     std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
     int m_ServerSocket{-1};
@@ -71,13 +71,13 @@ public:
         std::string ipAddress,
         int port,
         std::shared_ptr<InputContext> tcpInputContext,
-        std::shared_ptr<IQueue> concurrentQueue,
+        std::shared_ptr<IQueue> serialQueue,
         std::shared_ptr<ILogger> logger,
         std::shared_ptr<IConnectionMonitor> connectionMonitor)
         : m_IPAddress{ipAddress}
         , m_Port{port}
         , m_TCPInputContext{tcpInputContext}
-        , m_ConcurrentQueue{concurrentQueue}
+        , m_SerialQueue{serialQueue}
         , m_Logger{logger}
         , m_ConnectionMonitor{connectionMonitor}
     {
@@ -100,35 +100,46 @@ public:
             m_Logger->Log(LogLevel::ERROR, "Server failed to bind socket, terminating application…");
             exit(1);
         }
-        listen(m_ServerSocket, 5);
+        listen(m_ServerSocket, 10);
         auto weakSelf = weak_from_this();
-        m_ConcurrentQueue->DispatchAsync(
+        m_SerialQueue->DispatchAsync(
             [weakSelf]() {
                 auto self = weakSelf.lock();
-                if (self)
+                if (self != nullptr)
                 {
                     self->HandleConnections();
                 }
             },
-            "TCPContext::Run -> TCPContext::HandleConnections");
+            "TCPContext::HandleConnections -> TCPContext::HandleConnections");
     }
 
     virtual void HandleConnections() override
     {
         struct sockaddr_in client;
-        socklen_t client_len;
-        client_len = sizeof client;
-        int client_socket = accept(m_ServerSocket, (struct sockaddr*)&client, &client_len);
-        if (client_socket > 0)
+        socklen_t clientSocketLength;
+        clientSocketLength = sizeof client;
+        int clientSocket = accept(m_ServerSocket, (struct sockaddr*)&client, &clientSocketLength);
+        if (clientSocket <= 0)
         {
-            m_Logger->Log(LogLevel::INFO, "Incoming connection on socket descriptor " + std::to_string(client_socket));
-            non_block_with_timeout(client_socket);
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                m_Logger->Log(LogLevel::DETAIL, "No incoming connections.");
+            }
+            else
+            {
+                m_Logger->Log(LogLevel::ERROR, "Error while accepting connection.");
+            }
+        }
+        else
+        {
+            m_Logger->Log(LogLevel::INFO, "Incoming connection on socket descriptor " + std::to_string(clientSocket));
+            non_block_with_timeout(clientSocket);
             std::shared_ptr<ClientContext> c_ctx = std::make_shared<ClientContext>();
-            c_ctx->m_ClientSocket = client_socket;
+            c_ctx->m_ClientSocket = clientSocket;
             c_ctx->m_State = SocketState::CONNECTED;
             m_ConnectionMonitor->AddConnection(c_ctx);
             auto weakSelf = weak_from_this();
-            m_ConcurrentQueue->DispatchAsync(
+            m_SerialQueue->DispatchAsync(
                 [weakSelf, c_ctx]() {
                     auto self = weakSelf.lock();
                     if (self != nullptr)
@@ -138,19 +149,11 @@ public:
                 },
                 "TCPContext::HandleConnections -> TCPContext::DoRead");
         }
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-        {
-            m_Logger->Log(LogLevel::DETAIL, "No incoming connections.");
-        }
-        else
-        {
-            m_Logger->Log(LogLevel::ERROR, "Error while accepting connection.");
-        }
         auto weakSelf = weak_from_this();
-        m_ConcurrentQueue->DispatchAsync(
+        m_SerialQueue->DispatchAsync(
             [weakSelf]() {
                 auto self = weakSelf.lock();
-                if (self)
+                if (self != nullptr)
                 {
                     self->HandleConnections();
                 }
@@ -166,7 +169,7 @@ class TCPInputContext final : public std::enable_shared_from_this<TCPInputContex
 private:
     std::shared_ptr<IRequestContext> m_HTTPRequestContext;
     std::shared_ptr<IRequestContext> m_WSRequestContext;
-    std::shared_ptr<IQueue> m_ConcurrentQueue;
+    std::shared_ptr<IQueue> m_SerialQueue;
     std::shared_ptr<ILogger> m_Logger;
     std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
     static const int MAXBUF = 1024;
@@ -175,12 +178,12 @@ public:
     TCPInputContext(
         std::shared_ptr<IRequestContext> httpRequestContext,
         std::shared_ptr<IRequestContext> wsRequestContext,
-        std::shared_ptr<IQueue> concurrentQueue,
+        std::shared_ptr<IQueue> serialQueue,
         std::shared_ptr<ILogger> logger,
         std::shared_ptr<IConnectionMonitor> connectionMonitor)
         : m_HTTPRequestContext{httpRequestContext}
         , m_WSRequestContext{wsRequestContext}
-        , m_ConcurrentQueue{concurrentQueue}
+        , m_SerialQueue{serialQueue}
         , m_Logger{logger}
         , m_ConnectionMonitor{connectionMonitor}
     {
@@ -229,7 +232,7 @@ public:
                 {
                     m_Logger->Log(LogLevel::DETAIL, "TCPContext::DoRead: Read Blocked will try again");
                     auto weakSelf = weak_from_this();
-                    m_ConcurrentQueue->DispatchAsync(
+                    m_SerialQueue->DispatchAsync(
                         [weakSelf, c_ctx]() {
                             auto self = weakSelf.lock();
                             if (self)
@@ -276,9 +279,9 @@ public:
                     c_ctx->m_HttpMessage += inbuffer[i];
                 }
             }
-            // maybe there some more data so add another read to the queue
+            // maybe there is some more data so add another read to the queue
             auto weakSelf = weak_from_this();
-            m_ConcurrentQueue->DispatchAsync(
+            m_SerialQueue->DispatchAsync(
                 [weakSelf, c_ctx]() {
                     auto self = weakSelf.lock();
                     if (self)
@@ -300,7 +303,7 @@ public:
 class TCPOutputContext final : public std::enable_shared_from_this<TCPOutputContext>, public OutputContext
 {
 private:
-    std::shared_ptr<IQueue> m_ConcurrentQueue;
+    std::shared_ptr<IQueue> m_SerialQueue;
     std::shared_ptr<ILogger> m_Logger;
     std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
     std::weak_ptr<InputContextDelegate> m_TCPInputDelegate;
@@ -308,10 +311,10 @@ private:
 
 public:
     TCPOutputContext(
-        std::shared_ptr<IQueue> concurrentQueue,
+        std::shared_ptr<IQueue> serialQueue,
         std::shared_ptr<ILogger> logger,
         std::shared_ptr<IConnectionMonitor> connectionMonitor)
-        : m_ConcurrentQueue{concurrentQueue}
+        : m_SerialQueue{serialQueue}
         , m_Logger{logger}
         , m_ConnectionMonitor{connectionMonitor}
     {
@@ -397,7 +400,7 @@ public:
                     "TCPContext::DoWrite: Write block will try again on socket " +
                         std::to_string(c_ctx->m_ClientSocket));
                 auto weakSelf = weak_from_this();
-                m_ConcurrentQueue->DispatchAsync(
+                m_SerialQueue->DispatchAsync(
                     [weakSelf, c_ctx]() {
                         auto self = weakSelf.lock();
                         if (self)
@@ -438,7 +441,7 @@ public:
                 LogLevel::INFO,
                 "TCPContext::DoWrite: There is more data to write on socket " + std::to_string(c_ctx->m_ClientSocket));
             auto weakSelf = weak_from_this();
-            m_ConcurrentQueue->DispatchAsync(
+            m_SerialQueue->DispatchAsync(
                 [weakSelf, c_ctx]() {
                     auto self = weakSelf.lock();
                     if (self)
@@ -488,7 +491,7 @@ public:
             c_ctx->m_HttpBytesSend = 0;
         }
         auto weakSelf = weak_from_this();
-        m_ConcurrentQueue->DispatchAsync(
+        m_SerialQueue->DispatchAsync(
             [weakSelf, c_ctx]() {
                 auto self = weakSelf.lock();
                 if (self)
@@ -514,19 +517,15 @@ std::shared_ptr<IServer> CreateTCPServer(
     std::shared_ptr<ILogger> logger,
     std::shared_ptr<IConnectionMonitor> connectionMonitor)
 {
-    auto tcpOutputContext = std::make_shared<TCPOutputContext>(concurrentQueue, logger, connectionMonitor);
-    auto httpResponseContext = std::make_unique<HttpResponseContext>(tcpOutputContext, concurrentQueue, cryptoManager);
-    auto httpRequestContext =
-        std::make_shared<HttpRequestContext>(std::move(httpResponseContext), concurrentQueue, routeManager);
-    auto wsResponseContext = std::make_unique<WebsocketResponseContext>(tcpOutputContext, concurrentQueue);
-    auto wsRequestContext = std::make_shared<WebsocketRequestContext>(std::move(wsResponseContext), concurrentQueue);
-    auto tcpInputContext = std::make_shared<TCPInputContext>(
-        httpRequestContext,
-        wsRequestContext,
-        concurrentQueue,
-        logger,
-        connectionMonitor);
+    auto serialQueue = std::make_shared<SerialQueue>();
+    auto tcpOutputContext = std::make_shared<TCPOutputContext>(serialQueue, logger, connectionMonitor);
+    auto httpResponseContext = std::make_unique<HttpResponseContext>(tcpOutputContext, cryptoManager);
+    auto httpRequestContext = std::make_shared<HttpRequestContext>(std::move(httpResponseContext), routeManager);
+    auto wsResponseContext = std::make_unique<WebsocketResponseContext>(tcpOutputContext);
+    auto wsRequestContext = std::make_shared<WebsocketRequestContext>(std::move(wsResponseContext));
+    auto tcpInputContext =
+        std::make_shared<TCPInputContext>(httpRequestContext, wsRequestContext, serialQueue, logger, connectionMonitor);
     tcpOutputContext->SetTCPInputDelegate(tcpInputContext);
-    return std::make_shared<TCPServer>(ipAddress, port, tcpInputContext, concurrentQueue, logger, connectionMonitor);
+    return std::make_shared<TCPServer>(ipAddress, port, tcpInputContext, serialQueue, logger, connectionMonitor);
 }
 } // namespace Elvis

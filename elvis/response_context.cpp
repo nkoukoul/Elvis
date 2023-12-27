@@ -14,10 +14,8 @@ using namespace Elvis;
 
 HttpResponseCreator::HttpResponseCreator(
     std::shared_ptr<OutputContext> tcpOutputContext,
-    std::shared_ptr<IQueue> concurrentQueue,
     std::shared_ptr<ICryptoManager> cryptoManager)
     : m_TCPOutputContext{tcpOutputContext}
-    , m_ConcurrentQueue{concurrentQueue}
     , m_CryptoManager{cryptoManager}
 {
 }
@@ -92,23 +90,11 @@ void HttpResponseCreator::CreateResponse(std::shared_ptr<ClientContext> c_ctx) c
     }
 
     c_ctx->m_HttpBytesSend = 0;
-    auto weakSelf = weak_from_this();
-    m_ConcurrentQueue->DispatchAsync(
-        [weakSelf, c_ctx]() {
-            auto self = weakSelf.lock();
-            if (self)
-            {
-                self->m_TCPOutputContext->DoWrite(c_ctx);
-            }
-        },
-        "HttpResponseCreator::CreateResponse -> TCPContext::DoWrite");
+    m_TCPOutputContext->DoWrite(c_ctx);
 }
 
-WebsocketResponseCreator::WebsocketResponseCreator(
-    std::shared_ptr<OutputContext> tcpOutputContext,
-    std::shared_ptr<IQueue> concurrentQueue)
+WebsocketResponseCreator::WebsocketResponseCreator(std::shared_ptr<OutputContext> tcpOutputContext)
     : m_TCPOutputContext{tcpOutputContext}
-    , m_ConcurrentQueue{concurrentQueue}
 {
 }
 
@@ -152,13 +138,5 @@ void WebsocketResponseCreator::CreateResponse(std::shared_ptr<ClientContext> c_c
     }
     c_ctx->m_WSResponse += c_ctx->m_WSData;
     auto weakSelf = weak_from_this();
-    m_ConcurrentQueue->DispatchAsync(
-        [weakSelf, c_ctx]() {
-            auto self = weakSelf.lock();
-            if (self)
-            {
-                self->m_TCPOutputContext->DoWrite(c_ctx);
-            }
-        },
-        "WebsocketResponseCreator::CreateResponse -> TCPContext::DoWrite");
+    m_TCPOutputContext->DoWrite(c_ctx);
 }

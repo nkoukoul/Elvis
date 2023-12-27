@@ -11,7 +11,6 @@
 #define IO_CONTEXT_H
 
 #include "client_context.h"
-#include "context_delegate.h"
 #include "crypto_manager.h"
 #include "logger.h"
 #include "monitor.h"
@@ -38,6 +37,13 @@ struct InputContext
     virtual void DoRead(std::shared_ptr<ClientContext> c_ctx) = 0;
 };
 
+class InputContextDelegate
+{
+public:
+    virtual ~InputContextDelegate() = default;
+    virtual void Read(std::shared_ptr<ClientContext> c_ctx) = 0;
+};
+
 struct OutputContext
 {
     virtual ~OutputContext() = default;
@@ -45,12 +51,19 @@ struct OutputContext
     virtual void SetTCPInputDelegate(std::weak_ptr<InputContextDelegate> inputDelegate) = 0;
 };
 
+class OutputContextDelegate
+{
+public:
+    virtual ~OutputContextDelegate() = default;
+    virtual void Write(std::shared_ptr<ClientContext> c_ctx) = 0;
+};
+
 std::shared_ptr<IServer> CreateTCPServer(
     std::string ipAddress,
     int port,
     std::shared_ptr<RouteManager> routeManager,
     std::shared_ptr<ICryptoManager> cryptoManager,
-    std::shared_ptr<IQueue> concurrentQueue,
+    std::shared_ptr<IQueue> serialQueue,
     std::shared_ptr<ILogger> logger,
     std::shared_ptr<IConnectionMonitor> connectionMonitor);
 } // namespace Elvis

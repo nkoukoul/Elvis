@@ -75,7 +75,6 @@ private:
     std::shared_ptr<ICryptoManager> m_CryptoManager;
     std::shared_ptr<IConnectionMonitor> m_ConnectionMonitor;
 
-    friend class TCPContext;
 };
 } // namespace Elvis
 

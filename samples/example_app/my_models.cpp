@@ -6,87 +6,73 @@ using namespace Elvis;
 // "5f7f11f4b89befa92c9451ffa5c81184"}
 FileModel::FileModel(std::string filename, std::string md5)
 {
-  m_Filename = std::make_unique<Attribute<std::string>>();
-  m_Filename->setKey("filename");
-  m_Filename->setValue(filename);
-  m_Md5 = std::make_unique<Attribute<std::string>>();
-  m_Md5->setKey("md5sum");
-  m_Md5->setValue(md5);
+    m_Filename = std::make_unique<Attribute<std::string>>();
+    m_Filename->setKey("filename");
+    m_Filename->setValue(filename);
+    m_Md5 = std::make_unique<Attribute<std::string>>();
+    m_Md5->setKey("md5sum");
+    m_Md5->setValue(md5);
 }
 
 void FileModel::Create() const
 {
-  std::string sql = "insert into operations (";
-  std::ostringstream values;
-  values << "values (";
-  if (dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue() !=
-      "")
-  {
-    sql += m_Filename->getKey();
-    values << "'" +
-                  dynamic_cast<Attribute<std::string> *>(m_Filename.get())
-                      ->getValue() +
-                  "'";
-  }
-  if (dynamic_cast<Attribute<std::string> *>(m_Md5.get())->getValue() != "")
-  {
-    sql += ", ";
-    sql += m_Md5->getKey();
-    values << ", ";
-    values
-        << "'" +
-               dynamic_cast<Attribute<std::string> *>(m_Md5.get())->getValue() +
-               "'";
-  }
-  sql += ") ";
-  values << ")";
-  sql += values.str();
-  
-  auto elvis = App::GetInstance();
-  elvis->CreateModel(sql);
+    std::string sql = "insert into operations (";
+    std::ostringstream values;
+    values << "values (";
+    if (dynamic_cast<Attribute<std::string>*>(m_Filename.get())->getValue() != "")
+    {
+        sql += m_Filename->getKey();
+        values << "'" + dynamic_cast<Attribute<std::string>*>(m_Filename.get())->getValue() + "'";
+    }
+    if (dynamic_cast<Attribute<std::string>*>(m_Md5.get())->getValue() != "")
+    {
+        sql += ", ";
+        sql += m_Md5->getKey();
+        values << ", ";
+        values << "'" + dynamic_cast<Attribute<std::string>*>(m_Md5.get())->getValue() + "'";
+    }
+    sql += ") ";
+    values << ")";
+    sql += values.str();
+
+    auto elvis = App::GetInstance();
+    elvis->CreateModel(sql);
 }
 
 void FileModel::Retrieve() const
 {
-  std::string filenameValue =
-      dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue();
-  std::string md5Value =
-      dynamic_cast<Attribute<std::string> *>(m_Md5.get())->getValue();
-  std::string sql = "select id, " + m_Filename->getKey() + ", " +
-                    m_Md5->getKey() + " from operations";
-  std::ostringstream values;
-  values << "values (";
-  if (!filenameValue.empty() && !md5Value.empty())
-  {
-    sql += "where ";
-    values << m_Filename->getKey() << " = '" + filenameValue + "' and ";
-    values << m_Md5->getKey() << " = '" + md5Value + "'";
-  }
-  else if (!filenameValue.empty())
-  {
-    sql += "where ";
-    values << m_Filename->getKey() << " = '" + filenameValue + "'";
-  }
-  else if (!md5Value.empty())
-  {
-    sql += "where ";
-    values << m_Md5->getKey() << " = '" + md5Value + "'";
-  }
-  sql += values.str();
-  
-  auto elvis = App::GetInstance();
-  elvis->RetrieveModel(sql);
+    std::string filenameValue = dynamic_cast<Attribute<std::string>*>(m_Filename.get())->getValue();
+    std::string md5Value = dynamic_cast<Attribute<std::string>*>(m_Md5.get())->getValue();
+    std::string sql = "select id, " + m_Filename->getKey() + ", " + m_Md5->getKey() + " from operations";
+    std::ostringstream values;
+    values << "values (";
+    if (!filenameValue.empty() && !md5Value.empty())
+    {
+        sql += "where ";
+        values << m_Filename->getKey() << " = '" + filenameValue + "' and ";
+        values << m_Md5->getKey() << " = '" + md5Value + "'";
+    }
+    else if (!filenameValue.empty())
+    {
+        sql += "where ";
+        values << m_Filename->getKey() << " = '" + filenameValue + "'";
+    }
+    else if (!md5Value.empty())
+    {
+        sql += "where ";
+        values << m_Md5->getKey() << " = '" + md5Value + "'";
+    }
+    sql += values.str();
+
+    auto elvis = App::GetInstance();
+    elvis->RetrieveModel(sql);
 }
 
 void FileModel::Display() const
 {
-  std::cout
-      << m_Filename->getKey() << ": "
-      << dynamic_cast<Attribute<std::string> *>(m_Filename.get())->getValue()
-      << "\n";
-  std::cout << m_Md5->getKey() << ": "
-            << dynamic_cast<Attribute<std::string> *>(m_Md5.get())->getValue()
-            << "\n";
+    std::cout << m_Filename->getKey() << ": " << dynamic_cast<Attribute<std::string>*>(m_Filename.get())->getValue()
+              << "\n";
+    std::cout << m_Md5->getKey() << ": " << dynamic_cast<Attribute<std::string>*>(m_Md5.get())->getValue() << "\n";
 }
 
 // void user_model::insert_model(app *ac)
